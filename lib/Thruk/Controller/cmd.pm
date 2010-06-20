@@ -45,41 +45,54 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     $c->detach('/error/index/11') if $c->check_user_roles('is_authorized_for_read_only');
 
     # set authorization information
+    my $query_options = { Slice => 1 };
     if(defined $c->{'request'}->{'parameters'}->{'backend'}) {
         my $backend = $c->{'request'}->{'parameters'}->{'backend'};
-        my($data);
-        # for comment ids
-        if(defined $c->{'request'}->{'parameters'}->{'com_id'}) {
-            $data = $c->{'live'}->selectall_arrayref("GET comments\nColumns: host_name service_description\nFilter: id = ".$c->{'request'}->{'parameters'}->{'com_id'}, { Slice => 1, Backend => [ $backend ]});
-        }
-        # for downtime ids
-        if(defined $c->{'request'}->{'parameters'}->{'down_id'}) {
-            $data = $c->{'live'}->selectall_arrayref("GET downtimes\nColumns: host_name service_description\nFilter: id = ".$c->{'request'}->{'parameters'}->{'down_id'}, { Slice => 1, Backend => [ $backend ] });
-        }
-        if(defined $data->[0]) {
-            $c->{'request'}->{'parameters'}->{'host'}    = $data->[0]->{'host_name'};
-            $c->{'request'}->{'parameters'}->{'service'} = $data->[0]->{'service_description'};
-        }
+        my $query_options = { Slice => 1, Backend => [ $backend ]};
+    }
+
+    my($data);
+    # for comment ids
+    if(defined $c->{'request'}->{'parameters'}->{'com_id'}) {
+        $data = $c->{'live'}->selectall_arrayref("GET comments\nColumns: host_name service_description\nFilter: id = ".$c->{'request'}->{'parameters'}->{'com_id'}, $query_options);
+    }
+    # for downtime ids
+    if(defined $c->{'request'}->{'parameters'}->{'down_id'}) {
+        $data = $c->{'live'}->selectall_arrayref("GET downtimes\nColumns: host_name service_description\nFilter: id = ".$c->{'request'}->{'parameters'}->{'down_id'}, $query_options);
+    }
+    if(defined $data->[0]) {
+        $c->{'request'}->{'parameters'}->{'host'}    = $data->[0]->{'host_name'};
+        $c->{'request'}->{'parameters'}->{'service'} = $data->[0]->{'service_description'};
     }
 
 
     my $host_quick_commands = {
-        1 => 96, # reschedule host check
-        2 => 55, # schedule downtime
-        3 => 1,  # add comment
-        4 => 33, # add acknowledgement
-        5 => 78, # remove all downtimes
-        6 => 20, # remove all comments
-        7 => 51, # remove acknowledgement
+        1  => 96, # reschedule host check
+        2  => 55, # schedule downtime
+        3  => 1,  # add comment
+        4  => 33, # add acknowledgement
+        5  => 78, # remove all downtimes
+        6  => 20, # remove all comments
+        7  => 51, # remove acknowledgement
+        8  => 47, # enable active checks
+        9  => 48, # disable active checks
+        10 => 24, # enable notifications
+        11 => 25, # disable notifications
+        12 => 87, # submit passive check result
     };
     my $service_quick_commands = {
-        1 => 7,  # reschedule service check
-        2 => 56, # schedule downtime
-        3 => 3,  # add comment
-        4 => 34, # acknowledge
-        5 => 79, # remove all downtimes
-        6 => 21, # remove all comments
-        7 => 52, # remove acknowledgement
+        1  => 7,  # reschedule service check
+        2  => 56, # schedule downtime
+        3  => 3,  # add comment
+        4  => 34, # acknowledge
+        5  => 79, # remove all downtimes
+        6  => 21, # remove all comments
+        7  => 52, # remove acknowledgement
+        8  => 5,  # enable active checks
+        9  => 6,  # disable active checks
+        10 => 22, # enable notifications
+        11 => 23, # disable notifications
+        12 => 30, # submit passive check result
     };
 
     # did we receive a quick command from the status page?
@@ -371,11 +384,6 @@ sub _generate_spread_startdates {
     my $spread    = shift;
     my $spread_dates = [];
 
-    my $starttimestamp = Thruk::Utils::parse_date($c, $starttime);
-
-    # spreading wont help if the start is in the past
-    $starttimestamp    = time() if $starttimestamp < time();
-
     # check for a valid number
     if($spread !~ m/^\d+$/mx or $spread <= 1) {
         return;
@@ -384,6 +392,11 @@ sub _generate_spread_startdates {
     if($number !~ m/^\d+$/mx or $number <= 1) {
         return;
     }
+
+    my $starttimestamp = Thruk::Utils::parse_date($c, $starttime);
+
+    # spreading wont help if the start is in the past
+    $starttimestamp    = time() if $starttimestamp < time();
 
     # calculate time between checks
     my $delta = $spread / $number;

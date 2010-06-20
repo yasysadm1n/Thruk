@@ -46,11 +46,12 @@ before 'execute' => sub {
     if(defined $c->request->cookie('thruk_backends')) {
         for my $val (@{$c->request->cookie('thruk_backends')->{'value'}}) {
             my($key, $value) = split/=/mx, $val;
+            next unless defined $value;
             $disabled_backends{$key} = $value;
             $nr_disabled++ if $value == 2;
         }
     }
-    else {
+    elsif(defined $c->{'live'}) {
         my $livestatus_config = $c->{'live'}->get_livestatus_conf();
         $c->log->debug("livestatus config: ".Dumper($livestatus_config));
         for my $peer (@{$livestatus_config->{'peer'}}) {
@@ -60,7 +61,9 @@ before 'execute' => sub {
             }
         }
     }
-    $c->{'live'}->_disable_backends(\%disabled_backends);
+    if(defined $c->{'live'}) {
+        $c->{'live'}->_disable_backends(\%disabled_backends);
+    }
     my $backend  = $c->{'request'}->{'parameters'}->{'backend'};
     $c->stash->{'param_backend'}  = $backend;
 
@@ -101,12 +104,26 @@ before 'execute' => sub {
 
     ###############################
     # add program status
+    # this is also the first query on every page, so do the
+    # backend availability checks here
     $c->stats->profile(begin => "AddDefaults::get_proc_info");
     eval {
-        my $processinfo = $c->{'live'}->selectall_hashref("GET status\n".Thruk::Utils::get_auth_filter($c, 'status')."\nColumns: livestatus_version program_version accept_passive_host_checks accept_passive_service_checks check_external_commands check_host_freshness check_service_freshness enable_event_handlers enable_flap_detection enable_notifications execute_host_checks execute_service_checks last_command_check last_log_rotation nagios_pid obsess_over_hosts obsess_over_services process_performance_data program_start interval_length", 'peer_key', { AddPeer => 1});
-        my $overall_processinfo = Thruk::Utils::calculate_overall_processinfo($processinfo);
+        my $processinfo          = $c->{'live'}->selectall_hashref("GET status\n".Thruk::Utils::get_auth_filter($c, 'status')."\nColumns: livestatus_version program_version accept_passive_host_checks accept_passive_service_checks check_external_commands check_host_freshness check_service_freshness enable_event_handlers enable_flap_detection enable_notifications execute_host_checks execute_service_checks last_command_check last_log_rotation nagios_pid obsess_over_hosts obsess_over_services process_performance_data program_start interval_length", 'peer_key', { AddPeer => 1});
+        my $overall_processinfo  = Thruk::Utils::calculate_overall_processinfo($processinfo);
         $c->stash->{'pi'}        = $overall_processinfo;
         $c->stash->{'pi_detail'} = $processinfo;
+
+        # check our backends uptime
+        if(defined $c->config->{'delay_pages_after_backend_reload'} and $c->config->{'delay_pages_after_backend_reload'} > 0) {
+            my $delay_pages_after_backend_reload = $c->config->{'delay_pages_after_backend_reload'};
+            for my $backend (keys %{$processinfo}) {
+                my $delay = int($processinfo->{$backend}->{'program_start'} + $delay_pages_after_backend_reload - time());
+                if($delay > 0) {
+                    $c->log->debug("delaying page delivery by $delay seconds...");
+                    sleep($delay);
+                }
+            }
+        }
     };
     if($@) {
         $c->log->error("livestatus error: $@");

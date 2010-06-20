@@ -8,25 +8,55 @@
   <table class="cmd_pane" border=1 width="400">
     <tr>
       <th colspan=2 class="status cmd_pane">
-          <a href="javascript:[% IF style == 'hostdetail' %]selectAllHosts(true);[% ELSE %]selectAllServices(true);[% END %]">check all</a>
-        - <a href="javascript:selectAllServices(false);selectAllHosts(false);">uncheck all</a>
-        - <a href="javascript:selectAllServices(false);selectServicesByClass(Array('.statusCRITICAL','.statusWARNING','.statusUNKNOWN'));">all problems</a>
-        - <a href="javascript:selectAllServices(false);selectServicesByClass(Array('.has_downtime'));">all with downtime</a>
+        [% IF style == 'hostdetail' %]
+          <a href="javascript:selectAllHosts(true);">select all</a>
+        - <a href="javascript:selectAllHosts(false);">unselect all</a>
+        - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.statusHOSTDOWN','.statusHOSTUNREACHABLE'));">all problems</a>
+        - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.has_downtime'));">all with downtime</a>
+        [% ELSE %]
+          <a href="javascript:selectAllHosts(false);selectAllServices(true);">select all</a>
+        - <a href="javascript:selectAllHosts(false);selectAllServices(false);">unselect all</a>
+        - <a href="javascript:selectAllHosts(false);selectAllServices(false);selectServicesByClass(Array('.statusCRITICAL','.statusWARNING','.statusUNKNOWN'));">all problems</a>
+        - <a href="javascript:selectAllHosts(false);selectAllServices(false);selectServicesByClass(Array('.has_downtime'));">all with downtime</a>
+        [% END %]
       </th>
     </tr>
     <tr>
       <td class="statusOdd">Command:</td>
       <td class="statusOdd">
         <select name="quick_command" id="quick_command" onChange="check_selected_command(this.value)">
+          [% IF c.config.cmd_quick_status.reschedule %]
           <option value="1">reschedule next check</option>
           <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.downtime %]
           <option value="2">add downtime</option>
-          <option value="3">add comment</option>
-          <option value="4">add acknowledgement</option>
-          <option value="" disabled>-----------------</option>
           <option value="5">remove downtimes</option>
+          <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.comment %]
+          <option value="3">add comment</option>
           <option value="6">remove comments</option>
+          <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.acknowledgement %]
+          <option value="4">add acknowledgement</option>
           <option value="7">remove acknowledgement</option>
+          <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.active_checks %]
+          <option value="8">enable active checks</option>
+          <option value="9">disable active checks</option>
+          <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.notifications %]
+          <option value="10">enable notifications</option>
+          <option value="11">disable notifications</option>
+          <option value="" disabled>-----------------</option>
+          [% END %]
+          [% IF c.config.cmd_quick_status.submit_result %]
+          <option value="12">submit passive check result</option>
+          [% END %]
         </select>
       </td>
     </tr>
@@ -65,7 +95,7 @@
         <table border=0 cellpadding=0 cellspacing=0>
           <tr><td onclick="javascript:toggleCheckBox('opt2')">Sticky Acknowledgement:</td><td><input type='checkbox' id="opt2" name='sticky_ack'[% IF c.config.cmd_defaults.sticky_ack %] checked>[% END %]</td></tr>
           <tr><td onclick="javascript:toggleCheckBox('opt3')">Send Notification:</td><td><input type='checkbox' id="opt3" name='send_notification'[% IF c.config.cmd_defaults.send_notification %] checked[% END %]></td></tr>
-          <tr><td onclick="javascript:toggleCheckBox('opt4')">Persistent Comment:</td><td><input type='checkbox' id="opt4" name='persistent'[% IF c.config.cmd_defaults.persistent %] checked[% END %]></td></tr>
+          <tr><td onclick="javascript:toggleCheckBox('opt4')">Persistent Comment:</td><td><input type='checkbox' id="opt4" name='persistent'[% IF c.config.cmd_defaults.persistent_ack %] checked[% END %]></td></tr>
         </table>
       </td>
     </tr>
@@ -73,7 +103,30 @@
       <td class="statusOdd" valign="top">Options:</td>
       <td class="statusOdd">
         <table border=0 cellpadding=0 cellspacing=0>
-          <tr><td onclick="javascript:toggleCheckBox('opt5')">Persistent :</td><td><input type='checkbox' id="opt5" name='persistent'[% IF c.config.cmd_defaults.persistent %] checked[% END %]></td></tr>
+          <tr><td onclick="javascript:toggleCheckBox('opt5')">Persistent :</td><td><input type='checkbox' id="opt5" name='persistent'[% IF c.config.cmd_defaults.persistent_comments %] checked[% END %]></td></tr>
+        </table>
+      </td>
+    </tr>
+    <tr id="row_submit_options">
+      <td class="statusOdd">Options:</td>
+      <td class="statusOdd">
+        <table border=0 cellpadding=0 cellspacing=0>
+          <tr><td>Check Result:</td><td>
+            <select name="plugin_state">
+              <option value="0">Ok</option>
+              <option value="1">Warning</option>
+              <option value="2">Critical</option>
+              <option value="3">Unknown</option>
+            </select>
+          </td></tr>
+          <tr>
+            <td>Check Output:</td>
+            <td><input type="text" value="" name="plugin_output" id="plugin_output" size="30"></td>
+          </tr>
+          <tr>
+            <td>Performance Data:</td>
+            <td><input type="text" value="" name="performance_data" size="30"></td>
+          </tr>
         </table>
       </td>
     </tr>

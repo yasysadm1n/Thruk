@@ -68,9 +68,9 @@ sub begin : Private {
     $c->stash->{'documentation_link'} = Thruk->config->{'documentation_link'} || '/thruk/docs/index.html';
 
     # these features are not implemented yet
-    $c->stash->{'use_feature_statusmap'} = 0;
-    $c->stash->{'use_feature_statuswrl'} = 0;
-    $c->stash->{'use_feature_histogram'} = 0;
+    $c->stash->{'use_feature_statusmap'} = Thruk->config->{'use_feature_statusmap'} || 0;
+    $c->stash->{'use_feature_statuswrl'} = Thruk->config->{'use_feature_statuswrl'} || 0;
+    $c->stash->{'use_feature_histogram'} = Thruk->config->{'use_feature_histogram'} || 0;
 
     # enable trends if gd loaded
     if($c->config->{'has_gd'}) {
@@ -83,14 +83,19 @@ sub begin : Private {
     $c->stash->{'datetime_format_log'}   = Thruk->config->{'datetime_format_log'};
 
     # which theme?
-    my $theme = Thruk->config->{'default_theme'};
+    my $theme;
     if(defined $c->request->cookie('thruk_theme')) {
         my $theme_cookie = $c->request->cookie('thruk_theme');
-        $theme = $theme_cookie->value if defined $theme_cookie->value and grep $theme, $c->config->{'themes'};
-        $c->log->debug("Set theme: '".$theme."' by cookie");
+        $theme = $theme_cookie->value if defined $theme_cookie->value and grep $theme_cookie->value, $c->config->{'themes'};
+        $c->log->debug("Set theme: '".$theme."' by cookie") if defined $theme;
     }
-    $c->stash->{additional_template_paths} = [ $c->config->{root}.'/thruk/themes/'.$theme.'/templates' ];
-    $c->stash->{'theme'}                   = $theme;
+    $theme = $theme || Thruk->config->{'default_theme'} || 'Classic';
+    if(defined $c->config->{templates_paths}) {
+        $c->stash->{additional_template_paths} = [ @{$c->config->{templates_paths}}, $c->config->{root}.'/thruk/themes/'.$theme.'/templates' ];
+    } else {
+        $c->stash->{additional_template_paths} = [ $c->config->{root}.'/thruk/themes/'.$theme.'/templates' ];
+    }
+    $c->stash->{'theme'} = $theme;
 
     # new or classic search?
     my $use_new_search = Thruk->config->{'use_new_search'};
@@ -104,7 +109,15 @@ sub begin : Private {
     }
     $c->stash->{'all_problems_link'} = $all_problems_link;
 
+    my $hidetop = $c->{'request'}->{'parameters'}->{'hidetop'};
+    $c->stash->{hidetop}   = $hidetop;
+
     $c->stash->{'ajax_search'} = Thruk->config->{'use_ajax_search'} || 1;
+
+    # redirect to error page unless we have a connection
+    if(!defined $c->{'live'} and $c->request->action !~ m|thruk/\w+\.html|mx and $c->request->action ne 'thruk/docs') {
+        $c->detach("/error/index/14");
+    }
 
     return 1;
 }
@@ -184,6 +197,7 @@ sub thruk_index : Path('/thruk/') {
     }
 
     # custom start page?
+    $c->stash->{'start_page'} = '/thruk/main.html' unless defined $c->stash->{'start_page'};
     if($c->stash->{'start_page'} !~ /^\/thruk\//mx) {
         # external link, put in frames
         my $start_page = uri_escape($c->stash->{'start_page'});
@@ -355,19 +369,6 @@ page: /thruk/cgi-bin/tac.cgi
 sub tac_cgi : Path('/thruk/cgi-bin/tac.cgi') {
     my ( $self, $c ) = @_;
     return $c->detach('/tac/index');
-}
-
-
-######################################
-
-=head2 statusmap_cgi
-
-page: /thruk/cgi-bin/statusmap.cgi
-
-=cut
-sub statusmap_cgi : Path('/thruk/cgi-bin/statusmap.cgi') {
-    my ( $self, $c ) = @_;
-    return $c->detach('/statusmap/index');
 }
 
 

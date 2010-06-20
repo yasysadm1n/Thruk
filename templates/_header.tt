@@ -28,7 +28,7 @@
     [% END %]
 
     <link rel='stylesheet' type='text/css' href='/thruk/themes/[% theme %]/stylesheets/[% theme %].css' />
-    <script type="text/javascript" src="/thruk/javascript/prototype-1.6.0.3.js"></script>
+    <script type="text/javascript" src="/thruk/javascript/prototype-1.6.1.js"></script>
     <script type="text/javascript" src="/thruk/javascript/thruk.js"></script>
     <script type="text/javascript" src="/thruk/javascript/cal/jscal2.js"></script>
     <link rel='stylesheet' type='text/css' href='/thruk/javascript/cal/jscal2.css' />
@@ -54,6 +54,7 @@
     -->
     </script>
     [% PROCESS extra_headers.tt %]
+    [% IF extra_header %][% extra_header %][% END %]
   </head>
 
   <body class='[% page %]' id='[% page %]'[% IF refresh_rate %] onLoad="setRefreshRate([% refresh_rate %])"[% END %]>
@@ -135,6 +136,6 @@
     </td>
   </tr>
 </table>
-[% IF page == 'status' %]
+[% IF page == 'status' || page == 'statusmap' %]
 <a href="#" onClick="toggleTopPane(); return false;"><img src="/thruk/themes/[% theme %]/images/icon_minimize.gif" class="btn_toggle_top_pane" id="btn_toggle_top_pane" alt="toggle header"></a>
 [% END %]

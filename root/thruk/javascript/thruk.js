@@ -146,7 +146,8 @@ function reloadPage() {
   }
 
   additionalParams.each(function(pair) {
-    if(pair.key == 'hidesearch' || pair.key == 'hidetop' || pair.key == 'backend' ) { // check for valid options to set here
+    // check for valid options to set here
+    if(pair.key == 'hidesearch' || pair.key == 'hidetop' || pair.key == 'backend' || pair.key == 'host' ) {
       urlArgs.set(pair.key, pair.value);
     }
   });
@@ -271,24 +272,39 @@ Y8,           88   `8b d8'   88 88         8P
 *******************************************************************************/
 var selectedServices = new Hash;
 var selectedHosts    = new Hash;
+var noEventsForId    = new Hash;
 
+/* add mouseover eventhandler for all cells and execute it once */
 function addRowSelector(id)
 {
-    var table = document.getElementById(id);
-    var rows  = table.tBodies[0].rows;
+    var row   = document.getElementById(id);
+    var cells = row.cells;
 
-    // for each table row, beginning with the second ( dont need table header )
-    for(var row_nr = 1; row_nr < rows.length; row_nr++) {
-        var cells = rows[row_nr].cells;
+    // remove this eventhandler, it has to fire only once
+    if(noEventsForId.get(id)) {
+        return false;
+    }
+    if( row.detachEvent ) {
+        noEventsForId.set(id, 1);
+    } else {
+        row.onmouseover = undefined;
+    }
 
-        // for each cell in a row
-        for(var cell_nr = 0; cell_nr < cells.length; cell_nr++) {
-            if(pagetype == "hostdetail" || (cell_nr == 0 && cells[0].innerHTML != '')) {
-                addEventHandler(cells[cell_nr], 'host');
-            }
-            else if(cell_nr >= 1) {
-                addEventHandler(cells[cell_nr], 'service');
-            }
+    // reset all current highlighted rows
+    $$('td.tableRowHover').each(function(e) {
+        resetHostRow(e);
+        resetServiceRow(e);
+    });
+
+    // for each cell in a row
+    for(var cell_nr = 0; cell_nr < cells.length; cell_nr++) {
+        if(pagetype == "hostdetail" || (cell_nr == 0 && cells[0].innerHTML != '')) {
+            setRowStyle(id, 'tableRowHover', 'host');
+            addEventHandler(cells[cell_nr], 'host');
+        }
+        else if(cell_nr >= 1) {
+            setRowStyle(id, 'tableRowHover', 'service');
+            addEventHandler(cells[cell_nr], 'service');
         }
     }
 }
@@ -355,7 +371,7 @@ function setRowStyle(row_id, style, type, force) {
     var row = document.getElementById(row_id);
     if(!row) {
         //alert("ERROR: got no row in setRowStyle(): " + row_id);
-        return;
+        return false;
     }
 
     // for each cells in this row
@@ -376,6 +392,7 @@ function setRowStyle(row_id, style, type, force) {
             styleElements(elems, style, force)
         }
     }
+    return true;
 }
 
 /* save current style and change it*/
@@ -398,13 +415,15 @@ function styleElementsIE(elems, style, force) {
         if(style == 'original') {
             // reset style to original
             if(elems[x].className != "tableRowSelected" || force) {
-                elems[x].className = elems[x].origclass;
+                if(elems[x].origclass != undefined) {
+                    elems[x].className = elems[x].origclass;
+                }
             }
         }
         else {
             if(elems[x].className != "tableRowSelected" || force) {
                 // save style in custom attribute
-                if(elems[x].className != "undefined" && elems[x].className != "tableRowSelected" && elems[x].className != "tableRowHover") {
+                if(elems[x].className != undefined && elems[x].className != "tableRowSelected" && elems[x].className != "tableRowHover") {
                     elems[x].setAttribute('origclass', elems[x].className);
                 }
 
@@ -499,12 +518,12 @@ function selectService(event, state)
         return;
     }
 
-    selectServiceById(row_id, state, event);
+    selectServiceByIdEvent(row_id, state, event);
     unselectCurrentSelection();
 }
 
 /* select this service */
-function selectServiceById(row_id, state, event)
+function selectServiceByIdEvent(row_id, state, event)
 {
     if(is_shift_pressed(event) && lastRowSelected != undefined) {
       no_more_events = 1;
@@ -525,7 +544,7 @@ function selectServiceById(row_id, state, event)
       }
 
       for(var x = id1; x < id2; x++) {
-        selectServiceById('r'+x, state);
+        selectServiceByIdEvent('r'+x, state);
       }
       lastRowSelected = undefined;
       no_more_events  = 0;
@@ -534,6 +553,13 @@ function selectServiceById(row_id, state, event)
       lastRowSelected = row_id;
     }
 
+    selectServiceById(row_id, state);
+
+    checkCmdPaneVisibility();
+}
+
+/* select service row by id */
+function selectServiceById(row_id, state) {
     var targetState;
     if(!Object.isUndefined(state)) {
         targetState = state;
@@ -544,6 +570,13 @@ function selectServiceById(row_id, state, event)
     else {
         targetState = true;
     }
+
+    // dont select the empty cells in services view
+    row = document.getElementById(row_id);
+    if(!row) {
+        return false;
+    }
+
     if(targetState) {
         setRowStyle(row_id, 'tableRowSelected', 'service', true);
         selectedServices.set(row_id, 1);
@@ -551,7 +584,7 @@ function selectServiceById(row_id, state, event)
         setRowStyle(row_id, 'original', 'service', true);
         selectedServices.unset(row_id);
     }
-    checkCmdPaneVisibility();
+    return true;
 }
 
 /* select this host */
@@ -581,13 +614,13 @@ function selectHost(event, state)
         return;
     }
 
-    selectHostById(row_id, state, event);
+    selectHostByIdEvent(row_id, state, event);
     unselectCurrentSelection();
 }
 
 
 /* select this service */
-function selectHostById(row_id, state, event) {
+function selectHostByIdEvent(row_id, state, event) {
 
     if(is_shift_pressed(event) && lastRowSelected != undefined) {
       no_more_events = 1;
@@ -608,7 +641,7 @@ function selectHostById(row_id, state, event) {
       }
 
       for(var x = id1; x < id2; x++) {
-        selectHostById('r'+x, state);
+        selectHostByIdEvent('r'+x, state);
       }
       lastRowSelected = undefined;
       no_more_events  = 0;
@@ -616,6 +649,13 @@ function selectHostById(row_id, state, event) {
       lastRowSelected = row_id;
     }
 
+    selectHostById(row_id, state);
+
+    checkCmdPaneVisibility();
+}
+
+/* set host row selected */
+function selectHostById(row_id, state) {
     var targetState;
     if(!Object.isUndefined(state)) {
         targetState = state;
@@ -629,8 +669,11 @@ function selectHostById(row_id, state, event) {
 
     // dont select the empty cells in services view
     row = document.getElementById(row_id);
+    if(!row) {
+      return false;
+    }
     if(row.cells[0].innerHTML == "") {
-      return;
+      return true;
     }
 
     if(targetState) {
@@ -640,8 +683,9 @@ function selectHostById(row_id, state, event) {
         setRowStyle(row_id, 'original', 'host', true);
         selectedHosts.unset(row_id);
     }
-    checkCmdPaneVisibility();
+    return true;
 }
+
 
 /* reset row style unless it has been clicked */
 function resetServiceRow(event)
@@ -684,18 +728,15 @@ function resetHostRow(event)
 
 /* select or deselect all services */
 function selectAllServices(state) {
-    if(state) {
-        var classes = new Array('.statusOK', '.statusWARNING', '.statusUNKNOWN', '.statusCRITICAL', '.statusPENDING');
-    }
-    else {
-        var classes = new Array('.tableRowSelected');
-    }
-    classes.each(function(classname) {
-        $$(classname).each(function(obj) {
-            selectService(obj, state);
-        })
-    });
+    var x = 0;
+    while(selectServiceById('r'+x, state)) {
+        // disable next row
+        x++;
+    };
+
+    checkCmdPaneVisibility();
 }
+/* select services by class name */
 function selectServicesByClass(classes) {
     classes.each(function(classname) {
         $$(classname).each(function(obj) {
@@ -704,19 +745,24 @@ function selectServicesByClass(classes) {
     });
 }
 
-/* select or deselect all hosts */
-function selectAllHosts(state) {
-    if(state) {
-        var classes = new Array('.statusHOSTUP', '.statusHOSTDOWN', '.statusHOSTUNREACHABLE');
-    }
-    else {
-        var classes = new Array('.tableRowSelected');
-    }
+/* select hosts by class name */
+function selectHostsByClass(classes) {
     classes.each(function(classname) {
         $$(classname).each(function(obj) {
-            selectHost(obj, state);
+            selectHost(obj, true);
         })
     });
+}
+
+/* select or deselect all hosts */
+function selectAllHosts(state) {
+    var x = 0;
+    while(selectHostById('r'+x, state)) {
+        // disable next row
+        x++;
+    };
+
+    checkCmdPaneVisibility();
 }
 
 /* toggle the visibility of the command pane */
@@ -779,6 +825,13 @@ function collectFormData() {
         }
     }
 
+    if(value == 12) { /* submit passive result */
+        if(document.getElementById('plugin_output').value == '') {
+            alert('please enter a check result');
+            return(false);
+        }
+    }
+
     var services = new Array();
     selectedServices.keys().each(function(row_id) {
         services.push(servicesHash.get(row_id));
@@ -825,11 +878,22 @@ function check_selected_command() {
     }
     if(value == 7) { /* remove acknowledgement */
     }
+    if(value == 8) { /* enable active checks */
+    }
+    if(value == 9) { /* disable active checks */
+    }
+    if(value == 10) { /* enable notifications */
+    }
+    if(value == 11) { /* disable notifications */
+    }
+    if(value == 12) { /* submit passive check result */
+        enableFormElement('row_submit_options');
+    }
 }
 
 /* hide all form element rows */
 function disableAllFormElement() {
-    var elems = new Array('row_start', 'row_end', 'row_comment', 'row_reschedule_options', 'row_ack_options', 'row_comment_options');
+    var elems = new Array('row_start', 'row_end', 'row_comment', 'row_reschedule_options', 'row_ack_options', 'row_comment_options', 'row_submit_options');
     elems.each(function(id) {
         obj = document.getElementById(id);
         obj.style.display = "none";
@@ -1057,7 +1121,7 @@ function add_new_filter(search_prefix, table) {
 
   // add first cell
   var typeselect        = document.createElement('select');
-  var options           = new Array('Search', 'Host', 'Service', 'Hostgroup', 'Servicegroup', 'Contact', 'Last Check', 'Next Check');
+  var options           = new Array('Search', 'Host', 'Service', 'Hostgroup', 'Servicegroup', 'Contact','Parent', 'Last Check', 'Next Check');
   typeselect.onchange   = verify_op;
   typeselect.setAttribute('name', search_prefix + 'type');
   typeselect.setAttribute('id', search_prefix + nr + '_ts');
@@ -1300,7 +1364,7 @@ function selectByValue(select, val) {
 
 /* toggle visibility of top status informations */
 function toggleTopPane() {
-  var formInput = document. getElementById('hidetop');
+  var formInput = document.getElementById('hidetop');
   if(toggleElement('top_pane')) {
     additionalParams.set('hidetop', 0);
     formInput.value = 0;
@@ -1414,6 +1478,9 @@ var ajax_search = {
             var search_type = selector.options[selector.selectedIndex].value;
             if(search_type == 'host' || search_type == 'hostgroup' || search_type == 'service' || search_type == 'servicegroup') {
                 ajax_search.search_type = search_type;
+            }
+            if(search_type == 'parent') {
+                ajax_search.search_type = 'host';
             }
         }
 

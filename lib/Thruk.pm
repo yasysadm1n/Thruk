@@ -27,7 +27,7 @@ use Catalyst qw/
                 Redirect
                 Compress::Gzip
                 /;
-our $VERSION = '0.60';
+our $VERSION = '0.64';
 
 ###################################################
 # Configure the application.
@@ -41,7 +41,7 @@ our $VERSION = '0.60';
 my $project_root = __PACKAGE__->config->{home};
 __PACKAGE__->config('name'                   => 'Thruk',
                     'version'                => $VERSION,
-                    'released'               => 'May 06, 2010',
+                    'released'               => 'June 01, 2010',
                     'encoding'               => 'UTF-8',
                     'image_path'             => $project_root.'/root/thruk/images',
                     'project_root'           => $project_root,
@@ -101,6 +101,30 @@ __PACKAGE__->config('name'                   => 'Thruk',
 );
 
 ###################################################
+# get installed plugins
+BEGIN {
+    my $project_root = __PACKAGE__->config->{home};
+    for my $addon (glob($project_root.'/plugins/plugins-enabled/*/')) {
+        my $addon_name = $addon;
+        $addon_name =~ s/\/$//gmx;
+        $addon_name =~ s/^.*\///gmx;
+        # lib directory included?
+        if(-d $addon.'lib') {
+            unshift(@INC, $addon.'lib')
+        }
+        # template directory included?
+        if(-d $addon.'templates') {
+            unshift @{__PACKAGE__->config->{templates_paths}}, $addon.'templates'
+        }
+        # static content included?
+        if(-d $addon.'root') {
+            unlink($project_root.'/root/plugins/'.$addon_name);
+            symlink($addon.'root', $project_root.'/root/plugins/'.$addon_name);
+        }
+    }
+}
+
+###################################################
 # set installed themes
 my $themes_dir = $project_root."/root/thruk/themes/";
 my @themes;
@@ -128,7 +152,6 @@ for my $entry (readdir($dh)) {
 closedir $dh;
 __PACKAGE__->config->{'ssi_includes'} = \%ssi;
 
-
 ###################################################
 # Start the application
 __PACKAGE__->setup();
@@ -152,8 +175,8 @@ unless(Thruk::Utils::read_cgi_cfg(undef, __PACKAGE__->config, __PACKAGE__->log))
 # check if logdir exists
 if(!-d $project_root.'/logs') { mkdir($project_root.'/logs') or die("failed to create logs directory: $!"); }
 
-if(-s "log4perl.conf") {
-    __PACKAGE__->log(Catalyst::Log::Log4perl->new("log4perl.conf"));
+if(-s $project_root.'log4perl.conf') {
+    __PACKAGE__->log(Catalyst::Log::Log4perl->new($project_root.'log4perl.conf'));
 }
 elsif(!__PACKAGE__->debug) {
     __PACKAGE__->log->levels( 'info', 'warn', 'error', 'fatal' );
@@ -165,7 +188,7 @@ elsif(!__PACKAGE__->debug) {
 # set to true unless there is a way to load trends.pm safely without GD
 __PACKAGE__->config->{'has_gd'} = 0;
 eval {
-    require GD;
+    require("GD.pm");
     __PACKAGE__->config->{'has_gd'} = 1;
 };
 if($@) {

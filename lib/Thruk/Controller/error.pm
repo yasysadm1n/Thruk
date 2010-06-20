@@ -32,6 +32,16 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
     # status code must be != 200, otherwise compressed output will fail
     my $code = 500; # internal server error
 
+    # override some errors for admins
+    if(defined $arg1 and $arg1 =~ m/^\d+$/mx) {
+        if($arg1 == 15 and $c->check_user_roles('authorized_for_all_services')) {
+            $arg1 = 18;
+        }
+        if($arg1 == 5  and $c->check_user_roles('authorized_for_all_hosts')) {
+            $arg1 = 17;
+        }
+    }
+
     my $errors = {
         '99'  => {
             'mess' => '',
@@ -109,7 +119,7 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
         },
         '14'  => {
             'mess' => 'missing backend configuration',
-            'dscr' => 'please specify at least one livestatus backend in your thruk_local.conf',
+            'dscr' => 'please specify at least one livestatus backend in your thruk_local.conf<br>Please refer the <a href="/thruk/documentation.html#_configuration_2">documentation</a> on how to setup Thruk.',
             'code' => 500, # internal server error
         },
         '15'  => {
@@ -121,6 +131,16 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
             'mess' => 'missing library',
             'dscr' => 'problems while loading graphics library, look at your logfile for details',
             'code' => 500, # internal server error
+        },
+        '17'  => {
+            'mess' => 'This host does not exist...',
+            'dscr' => 'If you believe this is an error, check your monitoring configuration and make sure all backends are connected.',
+            'code' => 404, # not found
+        },
+        '18'  => {
+            'mess' => 'This service does not exist...',
+            'dscr' => 'If you believe this is an error, check your monitoring configuration and make sure all backends are connected.',
+            'code' => 404, # not found
         },
     };
 
@@ -137,6 +157,7 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
     unless(defined $ENV{'TEST_ERROR'}) { # supress error logging in test mode
         if($code >= 500) {
             $c->log->error($errors->{$arg1}->{'mess'});
+            $c->log->error("on page: ".$c->request->uri) if defined $c->request->uri;
         } else {
             $c->log->info($errors->{$arg1}->{'mess'});
         }
