@@ -1,8 +1,6 @@
-[%# which one is authorized? #%]
-[% IF c.check_user_roles('is_authorized_for_read_only')
-   || (!c.check_user_roles('authorized_for_all_host_commands') && !c.check_permissions('host', c.request.parameters.host))
-%]
-[% WRAPPER error.tt errorMessage = "you are not authorized for this command" errorDescription = "check your configuration if you believe this is an error" %][% END %]
+﻿[%# which one is authorized? #%]
+[% IF !c.check_cmd_permissions('host', c.request.parameters.host) %]
+  [% WRAPPER error.tt errorMessage = "you are not authorized for this command" errorDescription = "check your configuration if you believe this is an error" %][% END %]
 [% ELSE %]
 
 [%# description used by the commands page #%]
@@ -15,7 +13,10 @@
 [% BLOCK action%]
     [% host_name            = c.request.parameters.host %]
 
-    [% IF c.request.parameters.ahas %]DISABLE_HOST_CHECK[% ELSE %]DISABLE_HOST_SVC_CHECKS[% END %];[% sprintf("%s",host_name) %]
+    [% IF c.request.parameters.ahas %]
+        DISABLE_HOST_CHECK;[% sprintf("%s",host_name) %]
+    [% END +%]
+    DISABLE_HOST_SVC_CHECKS;[% sprintf("%s",host_name) %]
 [% END %]
 
 [%# definition of the html form data #%]

@@ -26,6 +26,8 @@ Main Features / Advantages
   * 100% Perl (using Catalyst Framework)
   * paging ( can be disabled and customized )
   * multiple themes included
+  * Excel export
+  * Adjustable side menu
 
 
 
@@ -57,9 +59,9 @@ IMPORTANT: you may need to install libgd and libxpm.
 
 ----
   %> arch=$(perl -e 'use Config; print $Config{archname}')
-  %> wget http://www.thruk.org/files/Thruk-0.64-$arch.tar.gz
-  %> tar zxf Thruk-0.64-$arch.tar.gz
-  %> cd Thruk-0.64
+  %> wget http://www.thruk.org/files/Thruk-0.66-$arch.tar.gz
+  %> tar zxf Thruk-0.66-$arch.tar.gz
+  %> cd Thruk-0.66
   %> ./script/thruk_server.pl
 ----
 
@@ -72,7 +74,7 @@ For the FastCGI installation follow the steps at <<_fastcgi,fastcgi installation
       - minimal inst, create user thruk
 2.  add "contrib non-free" to /etc/apt/sources.list
 3.  #> apt-get install libapache2-mod-fastcgi libfile-copy-recursive-perl libmodule-install-perl \
-          make gcc git git-core libgd2-xpm-dev
+          make gcc git git-core libgd2-xpm-dev libexpat1-dev
 4.  #> su - thruk
 5.  %> cd /tmp
 6.  %> wget http://search.cpan.org/CPAN/authors/id/A/AP/APEIRON/local-lib-1.004009.tar.gz
@@ -289,14 +291,16 @@ use this apache example configuration:
     </Directory>
 
     Alias /thruk/ /home/thruk/Thruk/root/thruk/
-    <Location "/thruk">
+    <Directory "/home/thruk/Thruk/root/thruk/">
+        Options FollowSymLinks
+        AllowOverride All
         AuthName "Monitoring Access"
         AuthType Basic
         AuthUserFile /home/thruk/Thruk/htpasswd.users
         Order Allow,Deny
         Allow from all
         require valid-user
-    </Location>
+    </Directory>
 
     # Load fastcgi module unless already loaded
     LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
@@ -331,6 +335,8 @@ use this apache example configuration:
     </Directory>
 
     <Directory /home/thruk/Thruk/root/>
+        Options FollowSymLinks
+        AllowOverride All
         order allow,deny
         allow from all
     </Directory>
@@ -377,6 +383,8 @@ LoadModule fcgid_module /usr/lib/apache2/modules/mod_fcgid.so
     ErrorLog     /home/thruk/Thruk/logs/error.log
 
     <Directory /home/thruk/Thruk/root/>
+        Options FollowSymLinks
+        AllowOverride All
         order allow,deny
         allow from all
     </Directory>
@@ -409,6 +417,8 @@ Configuration is managed mainly in these configuration files.
   * thruk_local.conf
   * cgi.cfg
   * log4perl.conf
+  * menu.conf
+  * menu_local.conf
 
 
 === thruk.conf
@@ -497,7 +507,8 @@ Delay the page delivery until the backends uptime is at least this
 amount of seconds. Displaying pages soon after backend restarts
 may display wrong results and all services are pending. Enable this if
 you experience problems with pending services after reloading your
-backend
+backend.
+Should be obsolete with Livestatus versions greater than 1.1.6
 ex.: setting this to 10 would start serving pages 10 seconds
 after the backend reload
 
@@ -742,6 +753,10 @@ xinetd.conf. You can enter local unix sockets too.
                      without threads except the backends have a very poor connection
   * peer             enter the peer configuration. You can enter a name for each
                      connection.
+         - name      name for this connection
+         - peer      address or local socket
+         - hidden    should this peer be hidden ( can be enabled via gui)
+         - groups    if set, only contacts from these groups have access
   * connect_timeout  timeout for new connections
   * query_timeout    timeout for queries
 
@@ -751,8 +766,10 @@ ex.:
     keepalive   = 1
     use_threads = 0
     <peer>
-      name = Local Nagios
-      peer = /tmp/livestatus.socket
+      name   = Local Nagios
+      peer   = /tmp/livestatus.socket
+      hidden = 1
+      groups = admins,local_users
     </peer>
     <peer>
       name = External Nagios
@@ -761,6 +778,10 @@ ex.:
     <peer>
       name = External Icinga
       peer = 172.16.0.2:9999
+    </peer>
+    <peer>
+      name = External Shinken
+      peer = 172.16.0.3:9999
     </peer>
   </Component>
 
@@ -946,6 +967,37 @@ if you want to log all sent commands, just set the loglevel to INFO.
 
 ex.: log4perl.appender.ErrorLog.Threshold=INFO
 =======
+
+
+
+
+=== menu.conf
+
+This file contains the default side menu configuration. Do not change
+it. If you want to change the configuration copy this file to
+menu_local.conf and change that file.
+
+
+
+
+=== menu_local.conf
+
+This file contains the user configuration for the side menu. The file
+is not shipped with the Thruk package. Just copy the menu.conf to
+menu_local.conf to create it.
+
+The file itself is perl syntax, so you can do whatever perl can do.
+Make sure you verify the syntax after changing the file. The changes
+will be used immediately. So maybe you want to test your changes
+on a test instance first.
+
+[TIP]
+.syntax check for menu configuration
+=======
+ %>perl -wc menu_local.conf
+ menu_local.conf syntax OK
+=======
+
 
 
 

@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
   "http://www.w3.org/TR/html4/strict.dtd">
 <html>
   <head>
@@ -41,6 +41,7 @@
           [% SET val = '1' %]
           [% SET val = '0' IF pi_detail.$pd.program_start %]
           [% SET val = '2' IF backend_detail.$pd.disabled == 2 %]
+          [% SET val = '3' IF backend_detail.$pd.disabled == 3 %]
           [% SET val = '3' IF param_backend && pd != param_backend %]
           '[% pd %]': '[% val %]'[% UNLESS loop.last %],[% END %]
         [% END %]
@@ -95,7 +96,17 @@
     </table>
     </form>
   </div>
-  [% UNLESS use_frames %]
+  [% IF use_frames %]
+      [% IF c.request.parameters.reload_nav %]
+      <script type="text/javascript">
+      <!--
+      if(parent.frames[0] != null) {
+        parent.frames[0].location.reload();
+      }
+      -->
+      </script>
+      [% END %]
+  [% ELSE %]
   <div id="navbar" class="navbar">
     [% PROCESS side.tt %]
   </div>
@@ -114,20 +125,23 @@
     <td width="100%">
       <table border=0 cellpadding=0 cellspacing=0>
         <tr>
+          <td>
           [% IF backends && backends.size > 1 %]
           [% FOREACH pd IN backends %]
-          <td>
+          <div class='backend'>
             [% SET name  = 'unknown' %]
             [% SET name = backend_detail.$pd.name IF backend_detail.$pd.name %]
             [% SET name = pi_detail.$pd.peer_name IF pi_detail.$pd.program_start %]
             [% SET class = 'button_peerDOWN' %]
             [% SET class = 'button_peerUP'  IF pi_detail.$pd.program_start %]
             [% SET class = 'button_peerDIS' IF backend_detail.$pd.disabled == 2 %]
+            [% SET class = 'button_peerHID' IF backend_detail.$pd.disabled == 3 %]
             [% SET class = 'button_peerHID' IF param_backend && pd != param_backend %]
             <input type="button" id='button_[% pd %]' class="[% class %]" value="[% name %]" title="[% name %]" onMouseOver="button_over(this)" onMouseOut="button_out(this)" onClick="toggleBackend('[% pd %]')">
+          </div>
+          [% END %]
+          [% END %]
           </td>
-          [% END %] [% ELSE %] <td></td> [% END %]
-          <td width="100%"></td>
         </tr>
       </table>
     </td>

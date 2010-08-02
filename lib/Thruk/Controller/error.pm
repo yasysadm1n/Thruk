@@ -2,6 +2,7 @@ package Thruk::Controller::error;
 
 use strict;
 use warnings;
+use utf8;
 use Data::Dumper;
 use Carp;
 use parent 'Catalyst::Controller';
@@ -68,7 +69,7 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
             'code' => 403, # forbidden
         },
         '4'  => {
-            'mess' => 'Error: Could not open CGI config file \''.Thruk->config->{'cgi_cfg'}.'\' for reading!',
+            'mess' => 'Error: Could not open CGI config file \''.Thruk->config->{'cgi.cfg'}.'\' for reading!',
             'dscr' => 'Here are some things you should check in order to resolve this error:<br><ol><li>Make sure you\'ve installed a CGI config file in its proper location.  See the error message about for details on where the CGI is expecting to find the configuration file. A CGI configuration file (named <b>cgi.cfg</b>) is shipped with your Thruk distribution. </li></ol>',
             'code' => 500, # internal server error
         },
@@ -142,6 +143,11 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
             'dscr' => 'If you believe this is an error, check your monitoring configuration and make sure all backends are connected.',
             'code' => 404, # not found
         },
+        '19'  => {
+            'mess' => 'not a valid date',
+            'dscr' => 'this is not a valid date',
+            'code' => 500, # internal server error
+        },
     };
 
     $arg1 = 0 unless defined $errors->{$arg1}->{'mess'};
@@ -159,7 +165,8 @@ sub index :Path :Args(1) :ActionClass('RenderView') {
             $c->log->error($errors->{$arg1}->{'mess'});
             $c->log->error("on page: ".$c->request->uri) if defined $c->request->uri;
         } else {
-            $c->log->info($errors->{$arg1}->{'mess'});
+            $c->log->debug($errors->{$arg1}->{'mess'});
+            $c->log->debug("on page: ".$c->request->uri) if defined $c->request->uri;
         }
     }
 

@@ -9,6 +9,7 @@
 88          88      `8b 88888888888 88
 *******************************************************************************/
 
+var thruk_debug_js   = 0;  // enable debugging messages in javascript
 var refreshPage      = 1;
 var cmdPaneState     = 0;
 var curRefreshVal    = 0;
@@ -43,7 +44,10 @@ function hideElement(id) {
   else {
     pane = document.getElementById(id);
   }
-  if(!pane) { alert("ERROR: got no element for id in hideElement(): " + id); return; }
+  if(!pane) {
+    if(thruk_debug_js) { alert("ERROR: got no element for id in hideElement(): " + id); }
+    return;
+  }
   pane.style.display    = 'none';
   pane.style.visibility = 'hidden';
 }
@@ -57,7 +61,10 @@ function showElement(id) {
   else {
     pane = document.getElementById(id);
   }
-  if(!pane) { alert("ERROR: got no element for id in showElement(): " + id); return; }
+  if(!pane) {
+    if(thruk_debug_js) { alert("ERROR: got no element for id in showElement(): " + id); }
+    return;
+  }
   pane.style.display    = '';
   pane.style.visibility = 'visible';
 }
@@ -66,7 +73,7 @@ function showElement(id) {
 function toggleElement(id) {
   var pane = document.getElementById(id);
   if(!pane) {
-    alert("ERROR: got no panel for id in toggleElement(): " + id);
+    if(thruk_debug_js) { alert("ERROR: got no panel for id in toggleElement(): " + id); }
     return false;
   }
   if(pane.style.visibility == "hidden" || pane.style.display == 'none') {
@@ -96,6 +103,7 @@ function prefSubmit(url, current_theme) {
   var now         = new Date();
   var expires     = new Date(now.getTime() + (10*365*86400*1000)); // let the cookie expire in 10 years
   if(current_theme != sel.value) {
+    additionalParams.set('reload_nav', 1);
     document.cookie = "thruk_theme="+sel.value + "; path=/; expires=" + expires.toGMTString() + ";";
     window.status   = "thruk preferences saved";
     reloadPage();
@@ -147,7 +155,7 @@ function reloadPage() {
 
   additionalParams.each(function(pair) {
     // check for valid options to set here
-    if(pair.key == 'hidesearch' || pair.key == 'hidetop' || pair.key == 'backend' || pair.key == 'host' ) {
+    if(pair.key == 'hidesearch' || pair.key == 'hidetop' || pair.key == 'backend' || pair.key == 'host' || pair.key == 'reload_nav' ) {
       urlArgs.set(pair.key, pair.value);
     }
   });
@@ -350,14 +358,14 @@ function removeEvent( obj, type, fn ) {
 /* returns the first element which has an id */
 function getFirstParentId(elem) {
     if(!elem) {
-        alert("ERROR: got no element in getFirstParentId()");
+        if(thruk_debug_js) { alert("ERROR: got no element in getFirstParentId()"); }
         return false;
     }
     nr = 0;
     while(nr < 10 && !elem.id) {
         nr++;
         if(!elem.parentNode) {
-            //alert("ERROR: element has no parentNode in getFirstParentId(): " + elem);
+            if(thruk_debug_js) { alert("ERROR: element has no parentNode in getFirstParentId(): " + elem); }
             return false;
         }
         elem = elem.parentNode;
@@ -370,7 +378,7 @@ function setRowStyle(row_id, style, type, force) {
 
     var row = document.getElementById(row_id);
     if(!row) {
-        //alert("ERROR: got no row in setRowStyle(): " + row_id);
+        if(thruk_debug_js) { alert("ERROR: got no row in setRowStyle(): " + row_id); }
         return false;
     }
 
@@ -978,7 +986,7 @@ function toggleFilterPaneSelector(search_prefix, id) {
   }
 
   if(!panel) {
-    alert("ERROR: unknown id in toggleFilterPaneSelector(): " + search_prefix + id);
+    if(thruk_debug_js) { alert("ERROR: unknown id in toggleFilterPaneSelector(): " + search_prefix + id); }
     return;
   }
   if(!toggleElement(search_prefix+panel)) {
@@ -991,7 +999,10 @@ function toggleFilterPaneSelector(search_prefix, id) {
 /* calculate the sum for a filter */
 function accept_filter_types(search_prefix, checkbox_names, result_name, checkbox_prefix) {
     var inp  = document.getElementsByName(search_prefix + result_name);
-    if(!inp || inp.length == 0) { alert("ERROR: no element in accept_filter_types() for: " + search_prefix + result_name); return; }
+    if(!inp || inp.length == 0) {
+      if(thruk_debug_js) { alert("ERROR: no element in accept_filter_types() for: " + search_prefix + result_name); }
+      return;
+    }
     var orig = inp[0].value;
     var sum = 0;
     var elems = Array.from(document.getElementsByName(search_prefix + checkbox_names));
@@ -1015,7 +1026,10 @@ function accept_filter_types(search_prefix, checkbox_names, result_name, checkbo
 /* set the initial state of filter checkboxes */
 function set_filter_types(search_prefix, initial_id, checkbox_prefix) {
     var inp = document.getElementsByName(search_prefix + initial_id);
-    if(!inp || inp.length == 0) { alert("ERROR: no element in set_filter_types() for: " + search_prefix + initial_id); return; }
+    if(!inp || inp.length == 0) {
+      if(thruk_debug_js) { alert("ERROR: no element in set_filter_types() for: " + search_prefix + initial_id); }
+      return;
+    }
     var initial_value = parseInt(inp[0].value);
     var bin  = initial_value.toString(2);
     var bits = new Array(); bits = bin.split('').reverse();
@@ -1023,7 +1037,10 @@ function set_filter_types(search_prefix, initial_id, checkbox_prefix) {
         var bit = bits[index];
         var nr  = Math.pow(2, index);
         var checkbox = document.getElementById(search_prefix + checkbox_prefix + nr);
-        if(!checkbox) { alert("ERROR: got no checkbox for id in set_filter_types(): " + search_prefix + checkbox_prefix + nr); return; }
+        if(!checkbox) {
+          if(thruk_debug_js) { alert("ERROR: got no checkbox for id in set_filter_types(): " + search_prefix + checkbox_prefix + nr); }
+          return;
+        }
         if(bit == '1') {
             checkbox.checked = true;
         } else {
@@ -1048,16 +1065,20 @@ function set_filter_name(search_prefix, checkbox_names, checkbox_prefix, filterv
     order = serviceprops;
   }
   else {
-    alert('ERROR: unknown prefix in set_filter_name(): ' + checkbox_prefix);
+    if(thruk_debug_js) { alert('ERROR: unknown prefix in set_filter_name(): ' + checkbox_prefix); }
   }
 
   var checked_ones = new Array();
   order.each(function(bit) {
     checkbox = document.getElementById(search_prefix + checkbox_prefix + bit);
-    if(!checkbox) { alert('ERROR: got no checkbox in set_filter_name(): ' + search_prefix + checkbox_prefix + bit); }
+    if(!checkbox) {
+        if(thruk_debug_js) { alert('ERROR: got no checkbox in set_filter_name(): ' + search_prefix + checkbox_prefix + bit); }
+    }
     if(checkbox.checked) {
       nameElem = document.getElementById(search_prefix + checkbox_prefix + bit + 'n');
-      if(!nameElem) { alert('ERROR: got no element in set_filter_name(): ' + search_prefix + checkbox_prefix + bit + 'n'); }
+      if(!nameElem) {
+        if(thruk_debug_js) { alert('ERROR: got no element in set_filter_name(): ' + search_prefix + checkbox_prefix + bit + 'n'); }
+      }
       checked_ones.push(nameElem.innerHTML);
     }
   });
@@ -1105,7 +1126,10 @@ function set_filter_name(search_prefix, checkbox_names, checkbox_prefix, filterv
 function add_new_filter(search_prefix, table) {
   search_prefix = search_prefix.substring(0,3);
   table = document.getElementById(search_prefix+table);
-  if(!table) { alert("ERROR: got no table for id in add_new_filter(): " + search_prefix+table); return; }
+  if(!table) {
+    if(thruk_debug_js) { alert("ERROR: got no table for id in add_new_filter(): " + search_prefix+table); }
+    return;
+  }
 
   // add new row
   var tblBody        = table.tBodies[0];
@@ -1203,7 +1227,9 @@ function add_options(select, options) {
 function new_filter(cloneObj, parentObj, btnId) {
   var search_prefix = btnId.substring(0, 3);
   var origObj  = document.getElementById(search_prefix+cloneObj);
-  if(!origObj) { alert("ERROR: no elem to clone in new_filter() for: " + search_prefix + cloneObj); }
+  if(!origObj) {
+    if(thruk_debug_js) { alert("ERROR: no elem to clone in new_filter() for: " + search_prefix + cloneObj); }
+  }
   var newObj   = origObj.cloneNode(true);
 
   var new_prefix = 's' + (parseInt(search_prefix.substring(1)) + 1) + '_';
@@ -1428,7 +1454,6 @@ Y8,         88               d8'`8b      88      ,8P d8'           88        88
 Y8a     a8P 88           d8'        `8b  88     `8b   Y8a.    .a8P 88        88
  "Y88888P"  88888888888 d8'          `8b 88      `8b   `"Y8888Y"'  88        88
 *******************************************************************************/
-var a;
 var ajax_search = {
     url             : '/thruk/cgi-bin/status.cgi?format=search',
     max_results     : 12,
@@ -1551,7 +1576,7 @@ var ajax_search = {
         var input;
         var input = document.getElementById(ajax_search.input_field);
         if(!input) { return; }
-        if(ajax_search.base.size() == 0) { return; }
+        if(ajax_search.base == undefined || ajax_search.base.size() == 0) { return; }
 
         pattern = input.value;
         if(pattern.length >= 1 || ajax_search.search_type != 'all') {

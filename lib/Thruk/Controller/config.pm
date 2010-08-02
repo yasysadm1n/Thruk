@@ -2,6 +2,7 @@ package Thruk::Controller::config;
 
 use strict;
 use warnings;
+use utf8;
 use parent 'Catalyst::Controller';
 
 =head1 NAME
@@ -62,6 +63,15 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
         $data    = Thruk::Utils::sort($c, $data, 'name');
         $c->stash->{data}     = $data;
         $c->stash->{template} = 'config_contacts.tt';
+    }
+
+    # contactgroups
+    elsif($type eq 'contactgroups') {
+        my $data = $c->{'live'}->selectall_arrayref("GET contactgroups\nColumns: name alias members", { Slice => 1, AddPeer => 1, Deepcopy => 1 });
+        $data    = Thruk::Utils::remove_duplicates($c, $data);
+        $data    = Thruk::Utils::sort($c, $data, 'name');
+        $c->stash->{data}     = $data;
+        $c->stash->{template} = 'config_contactgroups.tt';
     }
 
     # hosts

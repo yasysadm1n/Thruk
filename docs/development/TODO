@@ -11,7 +11,9 @@ general
     - configure url path in config (ex.: /thruk/ )
     - add extra grapher url
     - use title for quick downtimes popups
-    - reload nav frame when changing themes
+    - specify columns for excel export
+        -> http://www.nagios-portal.org/wbb/index.php?page=Thread&postID=129935#post129935
+    - search with s:service h:host sg and hg
 
 extinfo:
     - finish performance data on extinfo type 4
@@ -43,8 +45,11 @@ livestatus:
                 Service Escalations
 
 Known Bugs:
-    Statusmap Link from Hostgroups does not work
-    Alerts - top 25 hard alert producer
+    - Alerts - top 25 hard alert producer
+
+    - FastCGI: server "/tmp/thruk_fastcgi.fcgi" stderr: Undefined subroutine
+      &FCGI::ProcManager::MaxRequestsThruk::self_or_default called at
+      /home/thruk/Thruk/script/../lib/FCGI/ProcManager/MaxRequestsThruk.pm
 
 =========================================================
 ideas for after 1.0
@@ -62,10 +67,7 @@ general:
     - uc,lc option for auth user -> monitoring
     - multi language support
     - add context sensitive help
-    - completly hide backends by contactgroups
-    - addons: own template, images/themes and lib directory
     - bookmarks
-    - show only backends where user has at least permission for one host/service
     - use livestatus wait feature where possible
     - page by attribute a,b,c,d,e...z
 

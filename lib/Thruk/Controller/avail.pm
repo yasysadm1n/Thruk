@@ -2,6 +2,7 @@ package Thruk::Controller::avail;
 
 use strict;
 use warnings;
+use utf8;
 use Data::Dumper;
 use Monitoring::Availability;
 use parent 'Catalyst::Controller';
@@ -111,16 +112,16 @@ sub _show_step_2 {
 
     my $data;
     if($report_type eq 'hosts') {
-        $data = $c->{'live'}->selectall_hashref("GET hosts\nColumns: name\n".Thruk::Utils::get_auth_filter($c, 'hosts'), 'name');
+        $data = $c->{'live'}->selectall_hashref("GET hosts\nColumns: name\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts'), 'name');
     }
     elsif($report_type eq 'hostgroups') {
-        $data = $c->{'live'}->selectall_hashref("GET hostgroups\nColumns: name\n".Thruk::Utils::get_auth_filter($c, 'hostgroups'), 'name');
+        $data = $c->{'live'}->selectall_hashref("GET hostgroups\nColumns: name\n".Thruk::Utils::Auth::get_auth_filter($c, 'hostgroups'), 'name');
     }
     elsif($report_type eq 'servicegroups') {
-        $data = $c->{'live'}->selectall_hashref("GET servicegroups\nColumns: name\n".Thruk::Utils::get_auth_filter($c, 'servicegroups'), 'name');
+        $data = $c->{'live'}->selectall_hashref("GET servicegroups\nColumns: name\n".Thruk::Utils::Auth::get_auth_filter($c, 'servicegroups'), 'name');
     }
     elsif($report_type eq 'services') {
-        my $services = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: host_name description", { Slice => 1});
+        my $services = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: host_name description", { Slice => 1});
         for my $service (@{$services}) {
             $data->{$service->{'host_name'}.";".$service->{'description'}} = 1;
         }
@@ -144,7 +145,7 @@ sub _show_step_3 {
 
     $c->stats->profile(begin => "_show_step_3()");
 
-    my @timeperiods = sort keys %{$c->{'live'}->selectall_hashref("GET timeperiods\nColumns: name\n".Thruk::Utils::get_auth_filter($c, 'timeperiods'), 'name')};
+    my @timeperiods = sort keys %{$c->{'live'}->selectall_hashref("GET timeperiods\nColumns: name\n".Thruk::Utils::Auth::get_auth_filter($c, 'timeperiods'), 'name')};
     $c->stash->{timeperiods} = \@timeperiods;
     $c->stash->{template}    = 'avail_step_3.tt';
 

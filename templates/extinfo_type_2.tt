@@ -1,4 +1,4 @@
-[% USE date %]
+﻿[% USE date %]
 [% PROCESS _header.tt %]
 [% SET peer_key      = service.peer_key %]
 [% SET program_start = pi_detail.$peer_key.program_start %]
@@ -10,13 +10,13 @@
           <table border="1" cellpadding="0" cellspacing="0" class='linkBox'>
             <tr>
               <td class='linkBox'>
-                <a href='extinfo.cgi?type=1&amp;host=[% service.host_name %]'>View Information For This Host</a><br>
-                <a href='status.cgi?host=[% service.host_name %]'>View Status Detail For This Host</a><br>
-                <a href='history.cgi?host=[% service.host_name %]&amp;service=[% service.description %]'>View Alert History For This Service</a><br>
-                [% IF use_feature_trends %]<a href='trends.cgi?host=[% service.host_name %]&amp;service=[% service.description %]'>View Trends For This Service</a><br>[% END %]
-                [% IF use_feature_histogram %]<a href='histogram.cgi?host=[% service.host_name %]&amp;service=[% service.description %]'>View Alert Histogram For This Service</a><br>[% END %]
-                <a href='avail.cgi?host=[% service.host_name %]&amp;service=[% service.description %]&amp;show_log_entries'>View Availability Report For This Service</a><br>
-                <a href='notifications.cgi?host=[% service.host_name %]&amp;service=[% service.description %]'>View Notifications For This Service</a>
+                <a href='extinfo.cgi?type=1&amp;host=[% service.host_name | uri %]'>View Information For This Host</a><br>
+                <a href='status.cgi?host=[% service.host_name | uri %]'>View Status Detail For This Host</a><br>
+                <a href='history.cgi?host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]'>View Alert History For This Service</a><br>
+                [% IF use_feature_trends %]<a href='trends.cgi?host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]'>View Trends For This Service</a><br>[% END %]
+                [% IF use_feature_histogram %]<a href='histogram.cgi?host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]'>View Alert Histogram For This Service</a><br>[% END %]
+                <a href='avail.cgi?host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;show_log_entries'>View Availability Report For This Service</a><br>
+                <a href='notifications.cgi?host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]'>View Notifications For This Service</a>
               </td>
             </tr>
           </table>
@@ -26,7 +26,7 @@
           <div class='dataTitle'>[% service.description %]</div>
           <div class='data'>On Host</div>
           <div class='dataTitle'>[% service.host_alias %]</div>
-          <div class='dataTitle'>(<a href='extinfo.cgi?type=1&amp;host=[% service.host_name %]'>[% service.host_name %]</a>)</div><br>
+          <div class='dataTitle'>(<a href='extinfo.cgi?type=1&amp;host=[% service.host_name | uri %]'>[% service.host_name %]</a>)</div><br>
           [% IF matching_backends.size > 1 %]
           <div class='data'>
             <form action="extinfo.cgi" method="GET">
@@ -45,7 +45,7 @@
           </div>
           [% END %]
           <div class='data'> Member of </div>
-          <div class='dataTitle'>[% FOREACH group IN service.groups.split(',').sort %][% IF !loop.first() %], [% END %]<a href='status.cgi?servicegroup=[% group %]&amp;style=overview'>[% group %]</a>[% END %]
+          <div class='dataTitle'>[% FOREACH group IN service.groups.split(',').sort %][% IF !loop.first() %], [% END %]<a href='status.cgi?servicegroup=[% group | uri %]&amp;style=overview'>[% group %]</a>[% END %]
           </div><br>
           <div class='data'>[% service.host_address %]</div>
           [% IF service.icon_image_expanded %]
@@ -127,7 +127,7 @@
                           </tr>
                           <tr>
                             <td class='dataVar'>Last Check Time:</td>
-                            <td class='dataVal'>[% date.format(service.last_check, datetime_format) %]</td>
+                            <td class='dataVal'>[% date_format(c, service.last_check) %]</td>
                           </tr>
                           <tr>
                             <td class='dataVar'>Check Type:</td>
@@ -148,19 +148,19 @@
                           <tr>
                             <td class='dataVar'>Next Scheduled Check:&nbsp;&nbsp;</td>
                             <td class='dataVal'>
-                              [% IF service.next_check %][% date.format(service.next_check, datetime_format) %][% ELSE %]N/A[% END %]
+                              [% IF service.next_check %][% date_format(c, service.next_check) %][% ELSE %]N/A[% END %]
                               [% IF service.is_executing > 0 %]<img src="/thruk/themes/[% theme %]/images/waiting.gif" alt="This service is currently executing its servicecheck" title="This service is currently executing its servicecheck" border="0" height="20" width="20">[% END %]
                             </td>
                           </tr>
                           <tr>
                             <td class='dataVar'>Last State Change:</td>
-                            <td class='dataVal'>[% date.format(service.last_state_change, datetime_format) %]</td>
+                            <td class='dataVal'>[% date_format(c, service.last_state_change) %]</td>
                           </tr>
                           <tr>
                             <td class='dataVar'>Last Notification:</td>
                             <td class='dataVal'>
                               [% IF service.last_notification != 0 %]
-                              [% date.format(service.last_notification, datetime_format) %]
+                              [% date_format(c, service.last_notification) %]
                               [% ELSE %]
                               N/A
                               [% END %]
@@ -194,7 +194,7 @@
                           </tr>
                           <tr>
                             <td class='dataVar'>Last Update:</td>
-                            <td class='dataVal'>[% date.format(date.now, datetime_format) %]&nbsp;&nbsp;( 0d 0h 0m 0s ago)</td>
+                            <td class='dataVal'>[% date_format(c, date.now) %]&nbsp;&nbsp;( 0d 0h 0m 0s ago)</td>
                           </tr>
                           <tr>
                             <td class='dataVar'>Monitored by:</td>
@@ -288,7 +288,7 @@
                   <table border='1' cellspacing="0" cellpadding="0" class="command">
                     <tr>
                       <td>
-                        [% IF c.check_user_roles('is_authorized_for_read_only') %]
+                        [% UNLESS c.check_cmd_permissions('service', service.description, service.host_name) %]
                         <div align=center class='infoMessage'>Your account does not have permissions to execute commands.<br>
                         [% ELSE %]
                         <table border="0" cellspacing="0" cellpadding="0">
@@ -296,41 +296,41 @@
                           <tr class='command'>
                             [% IF service.checks_enabled %]
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Disable Active Checks Of This Service' title='Disable Active Checks Of This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=6&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Disable active checks of this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=6&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Disable active checks of this service</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Enable Active Checks Of This Service' title='Enable Active Checks Of This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=5&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Enable active checks of this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=5&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Enable active checks of this service</a></td>
                             [% END %]
                           </tr>
 
                           <tr class='data'>
                             <td><img src='/thruk/themes/[% theme %]/images/delay.gif' border="0" alt='Re-schedule Next Service Check' title='Re-schedule Next Service Check' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=7&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;force_check&amp;backend=[% service.peer_key %]'>Re-schedule the next check of this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=7&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;force_check&amp;backend=[% service.peer_key %]'>Re-schedule the next check of this service</a></td>
                           </tr>
 
                           [% IF service.accept_passive_checks %]
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/passiveonly.gif' border="0" alt='Submit Passive Check Result For This Service' title='Submit Passive Check Result For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=30&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Submit passive check result for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=30&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Submit passive check result for this service</a></td>
                           </tr>
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Stop Accepting Passive Checks For This Service' title='Stop Accepting Passive Checks For This Service' width="20" height="20"></td>
-                            <td class='command' nowrap><a href='cmd.cgi?cmd_typ=40&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Stop accepting passive checks for this service</a></td>
+                            <td class='command' nowrap><a href='cmd.cgi?cmd_typ=40&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Stop accepting passive checks for this service</a></td>
                           </tr>
                           [% ELSE %]
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Start Accepting Passive Checks For This Service' title='Start Accepting Passive Checks For This Service' width="20" height="20"></td>
-                            <td class='command' nowrap><a href='cmd.cgi?cmd_typ=39&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Start accepting passive checks for this service</a></td>
+                            <td class='command' nowrap><a href='cmd.cgi?cmd_typ=39&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Start accepting passive checks for this service</a></td>
                           </tr>
                           [% END %]
 
                           <tr class='command'>
                             [% IF service.obsess_over_service %]
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Stop Obsessing Over This Service' title='Stop Obsessing Over This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=100&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Stop obsessing over this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=100&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Stop obsessing over this service</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Start Obsessing Over This Service' title='Start Obsessing Over This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=99&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Start obsessing over this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=99&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Start obsessing over this service</a></td>
                             [% END %]
                           </tr>
 
@@ -338,10 +338,10 @@
                           <tr class='command'>
                             [% IF service.acknowledged %]
                             <td><img src='/thruk/themes/[% theme %]/images/noack.gif' border="0" alt='Remove Problem Acknowledgement' title='Remove Problem Acknowledgement' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=52&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Remove problem acknowledgement</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=52&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Remove problem acknowledgement</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/ack.gif' border="0" alt='Acknowledge This Service Problem' title='Acknowledge This Service Problem' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=34&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Acknowledge this service problem</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=34&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Acknowledge this service problem</a></td>
                             [% END %]
                           </tr>
                           [% END %]
@@ -349,46 +349,46 @@
                           <tr class='command'>
                             [% IF service.notifications_enabled %]
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Disable Notifications For This Service' title='Disable Notifications For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=23&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Disable notifications for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=23&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Disable notifications for this service</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Enable Notifications For This Service' title='Enable Notifications For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=22&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Enable notifications for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=22&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Enable notifications for this service</a></td>
                             [% END %]
                           </tr>
 
                           [% IF service.state >= 1 %]
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/delay.gif' border="0" alt='Delay Next Service Notification' title='Delay Next Service Notification' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=9&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Delay next service notification</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=9&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Delay next service notification</a></td>
                           </tr>
                           [% END %]
 
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/notify.gif' border="0" alt='Send Custom Notification' title='Send Custom Notification' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=160&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Send custom service notification</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=160&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Send custom service notification</a></td>
                           </tr>
                           <tr class='command'>
                             <td><img src='/thruk/themes/[% theme %]/images/downtime.gif' border="0" alt='Schedule Downtime For This Service' title='Schedule Downtime For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=56&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Schedule downtime for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=56&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Schedule downtime for this service</a></td>
                           </tr>
 
                           <tr class='command'>
                             [% IF service.event_handler_enabled %]
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Disable Event Handler For This Service' title='Disable Event Handler For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=46&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Disable event handler for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=46&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Disable event handler for this service</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Enable Event Handler For This Service' title='Enable Event Handler For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=45&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Enable event handler for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=45&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Enable event handler for this service</a></td>
                             [% END %]
                           </tr>
 
                           <tr class='command'>
                             [% IF service.flap_detection_enabled %]
                             <td><img src='/thruk/themes/[% theme %]/images/disabled.gif' border="0" alt='Disable Flap Detection For This Service' title='Disable Flap Detection For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=60&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Disable flap detection for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=60&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Disable flap detection for this service</a></td>
                             [% ELSE %]
                             <td><img src='/thruk/themes/[% theme %]/images/enabled.gif' border="0" alt='Enable Flap Detection For This Service' title='Enable Flap Detection For This Service' width="20" height="20"></td>
-                            <td class='command'><a href='cmd.cgi?cmd_typ=59&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]'>Enable flap detection for this service</a></td>
+                            <td class='command'><a href='cmd.cgi?cmd_typ=59&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]'>Enable flap detection for this service</a></td>
                             [% END %]
                           </tr>
 
@@ -409,17 +409,16 @@
         </tr>
         <tr>
           <td colspan="2" align="center" valign="top" class='commentPanel'>
-          [% IF c.check_user_roles('is_authorized_for_read_only') %]
-          [% ELSE %]
+          [% IF c.check_cmd_permissions('service', service.description, service.host_name) %]
             <a name="comments" id="comments"></a>
             <div class='commentTitle'>Service Comments</div>
             <table border="0">
               <tr>
                 <td valign="middle"><img src='/thruk/themes/[% theme %]/images/comment.gif' border="0" alt="#########" width="20" height="20"></td>
-                <td class='comment'><a href='cmd.cgi?cmd_typ=3&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]' class='comment'>Add a new comment</a></td>
+                <td class='comment'><a href='cmd.cgi?cmd_typ=3&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]' class='comment'>Add a new comment</a></td>
                 [% IF comments %]
                 <td valign="middle"><img src='/thruk/themes/[% theme %]/images/delete.gif' border="0" alt="#########" width="20" height="20"></td>
-                <td class='comment'><a href='cmd.cgi?cmd_typ=21&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]' class='comment'>Delete all comments</a></td>
+                <td class='comment'><a href='cmd.cgi?cmd_typ=21&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]' class='comment'>Delete all comments</a></td>
                 [% END %]
               </tr>
             </table>
@@ -441,13 +440,13 @@
                   [% SET class = 'commentEven' IF loop.even %]
                   [% SET class = 'commentOdd'  IF loop.odd %]
                   <tr class='[% class %]'>
-                    <td class='[% class %]' nowrap>[% date.format(comment.entry_time, datetime_format) %]</td>
+                    <td class='[% class %]' nowrap>[% date_format(c, comment.entry_time) %]</td>
                     <td class='[% class %]'>[% comment.author %]</td>
                     <td class='[% class %]'>[% IF escape_html_tags %][% html_escape(comment.comment) %][% ELSE %][% comment.comment %][% END %]</td>
                     <td class='[% class %]'>[% comment.id %]</td>
                     <td class='[% class %]'>[% IF comment.persistent %]Yes[% ELSE %]No[% END %]</td>
                     <td class='[% class %]' nowrap>[% IF comment.entry_type == 1 %]User[% ELSIF comment.entry_type == 2 %]Scheduled Downtime[% ELSIF comment.entry_type == 3 %]Flap Detection[% ELSIF comment.entry_type == 4 %]Acknowledgement[% ELSE %]?[% END %]</td>
-                    <td class='[% class %]'>[% IF comment.expires %][% date.format(comment.expires_time, datetime_format) %][% ELSE %]N/A[% END %]</td>
+                    <td class='[% class %]'>[% IF comment.expires %][% date_format(c, comment.expires_time) %][% ELSE %]N/A[% END %]</td>
                     <td><a href='cmd.cgi?cmd_typ=4&amp;com_id=[% comment.id %]&amp;backend=[% service.peer_key %]'><img src='/thruk/themes/[% theme %]/images/delete.gif' border="0" alt='Delete This Comment' title='Delete This Comment' width="20" height="20"></a></td>
                   </tr>
                   [% END %]
@@ -472,10 +471,10 @@
             <table border="0">
               <tr>
                 <td valign="middle"><img src='/thruk/themes/[% theme %]/images/downtime.gif' border="0" alt="#########" width="20" height="20"></td>
-                <td class='comment'><a href='cmd.cgi?cmd_typ=56&amp;host=[% service.host_name %]&amp;service=[% service.description %]&amp;backend=[% service.peer_key %]' class='comment'>Add a new downtime</a></td>
+                <td class='comment'><a href='cmd.cgi?cmd_typ=56&amp;host=[% service.host_name | uri %]&amp;service=[% service.description | uri %]&amp;backend=[% service.peer_key %]' class='comment'>Add a new downtime</a></td>
                 [% IF downtimes %]
                 <td valign="middle"><img src='/thruk/themes/[% theme %]/images/delete.gif' border="0" alt="#########" width="20" height="20"></td>
-                <td class='comment'><a href='cmd.cgi?quick_command=5&amp;selected_services=[% service.host_name %]%3B[% service.description %]%3B[% service.peer_key %]&amp;referer=[% c.request.uri | uri %]' class='comment'>Delete all downtimes</a></td>
+                <td class='comment'><a href='cmd.cgi?quick_command=5&amp;selected_services=[% service.host_name | uri %]%3B[% service.description | uri %]%3B[% service.peer_key %]&amp;referer=[% c.request.uri | uri %]' class='comment'>Delete all downtimes</a></td>
                 [% END %]
               </tr>
             </table>
@@ -497,9 +496,9 @@
                   [% SET class = 'commentEven' IF loop.even %]
                   [% SET class = 'commentOdd'  IF loop.odd %]
                   <tr class='[% class %]'>
-                    <td class='[% class %]' nowrap>[% date.format(downtime.entry_time, datetime_format) %]</td>
-                    <td class='[% class %]' nowrap>[% date.format(downtime.start_time, datetime_format) %]</td>
-                    <td class='[% class %]' nowrap>[% date.format(downtime.end_time, datetime_format) %]</td>
+                    <td class='[% class %]' nowrap>[% date_format(c, downtime.entry_time) %]</td>
+                    <td class='[% class %]' nowrap>[% date_format(c, downtime.start_time) %]</td>
+                    <td class='[% class %]' nowrap>[% date_format(c, downtime.end_time) %]</td>
                     <td class='[% class %]'>[% downtime.author %]</td>
                     <td class='[% class %]'>[% IF escape_html_tags %][% html_escape(downtime.comment) %][% ELSE %][% downtime.comment %][% END %]</td>
                     <td class='[% class %]'>[% downtime.id %]</td>

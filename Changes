@@ -1,9 +1,35 @@
 This file documents the revision history for the Monitoring Webinterface Thruk.
 
+0.68    Fri Jul 23 21:29:02 CEST 2010
+          - added mobile version for iPhones, iPad and Android mobile phones
+          - side menu is completly adjustable by config file
+          - used date_format_today more often
+          - added more columns to excel export
+          - added backend param to all pages
+          - added check for livestatus minimum version
+          - fixed problem with quotes in host definitions on statusmap
+          - fixed problem with plugin symlinks
+          - fixed problem with ssi path
+          - fixed utf8 support
+          - fixed memory leak
+
+0.66    Mon Jun 21 08:45:39 CEST 2010
+          - added Excel export to status/host details page
+          - added contactgroups config page
+          - added config option groups for backends (view permissions for peers based on contactgroups)
+          - navigation frame will be reloaded when changing themes
+          - fixed problem with special chars in links
+          - fixed problem with command authorization
+          - fixed problem with logfile access authorization
+          - fixed problem with template compile directory and different users on one host
+          - fixed all commands which send more than one external command
+          - fixed problem with "Schedule Downtime For Hosts Too"
+
 0.64    Sun May 30 10:17:24 CEST 2010
           - fixed problem with removing downtimes
 
 0.62    Sat May 29 17:03:41 CEST 2010
+          - added status map
           - fixed problem with selecting themes
           - fixed command default checkbox settings
 

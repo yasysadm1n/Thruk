@@ -1,4 +1,4 @@
-[% USE date %]
+﻿[% USE date %]
 [% PROCESS _header.tt %]
 
     <table border="0" width="100%">
@@ -39,12 +39,12 @@
         [% SET class = 'downtimeOdd' IF loop.even %]
         [% SET class = 'downtimeEven'  IF loop.odd %]
         <tr class='[% class %]'>
-          <td class='[% class %]'><a href='extinfo.cgi?type=1&amp;host=[% d.host_name %]'>[% d.host_name %]</a></td>
-          <td class='[% class %]'>[% date.format(d.entry_time, datetime_format) %]</td>
+          <td class='[% class %]'><a href='extinfo.cgi?type=1&amp;host=[% d.host_name | uri %]'>[% d.host_name %]</a></td>
+          <td class='[% class %]'>[% date_format(c, d.entry_time) %]</td>
           <td class='[% class %]'>[% d.author %]</td>
           <td class='[% class %]'>[% IF escape_html_tags %][% html_escape(d.comment) %][% ELSE %][% d.comment %][% END %]</td>
-          <td class='[% class %]'>[% date.format(d.start_time, datetime_format) %]</td>
-          <td class='[% class %]'>[% date.format(d.end_time, datetime_format) %]</td>
+          <td class='[% class %]'>[% date_format(c, d.start_time) %]</td>
+          <td class='[% class %]'>[% date_format(c, d.end_time) %]</td>
           <td class='[% class %]'>[% IF d.fixed %]Fixed[% ELSE%]Flexible[% END %]</td>
           <td class='[% class %]'>[% duration(d.end_time - d.start_time) %]</td>
           <td class='[% class %]'>[% d.id %]</td>
@@ -84,13 +84,13 @@
         [% SET class = 'downtimeOdd' IF loop.even %]
         [% SET class = 'downtimeEven'  IF loop.odd %]
         <tr class='[% class %]'>
-          <td class='[% class %]'><a href='extinfo.cgi?type=1&amp;host=[% d.host_name %]'>[% d.host_name %]</a></td>
-          <td class='[% class %]'><a href='extinfo.cgi?type=2&amp;host=[% d.host_name %]&amp;service=[% d.service_description %]'>[% d.service_description %]</a></td>
-          <td class='[% class %]'>[% date.format(d.entry_time, datetime_format) %]</td>
+          <td class='[% class %]'><a href='extinfo.cgi?type=1&amp;host=[% d.host_name | uri %]'>[% d.host_name %]</a></td>
+          <td class='[% class %]'><a href='extinfo.cgi?type=2&amp;host=[% d.host_name | uri %]&amp;service=[% d.service_description | uri %]'>[% d.service_description %]</a></td>
+          <td class='[% class %]'>[% date_format(c, d.entry_time) %]</td>
           <td class='[% class %]'>[% d.author %]</td>
           <td class='[% class %]'>[% IF escape_html_tags %][% html_escape(d.comment) %][% ELSE %][% d.comment %][% END %]</td>
-          <td class='[% class %]'>[% date.format(d.start_time, datetime_format) %]</td>
-          <td class='[% class %]'>[% date.format(d.end_time, datetime_format) %]</td>
+          <td class='[% class %]'>[% date_format(c, d.start_time) %]</td>
+          <td class='[% class %]'>[% date_format(c, d.end_time) %]</td>
           <td class='[% class %]'>[% IF d.fixed %]Fixed[% ELSE%]Flexible[% END %]</td>
           <td class='[% class %]'>[% duration(d.end_time - d.start_time) %]</td>
           <td class='[% class %]'>[% d.id %]</td>

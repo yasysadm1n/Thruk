@@ -1,8 +1,7 @@
-[% USE date %]
+﻿[% USE date %]
 [% PROCESS _header.tt
   js = "/thruk/javascript/overlib.js"
 %]
-[% today = date.format(date.now, '%Y-%m-%d') %]
 
 <script type="text/javascript">
   var pagetype = 'hostdetail';
@@ -25,10 +24,10 @@
                 <a href='status.cgi?hostgroup=all&amp;style=grid'>View Status Grid For All Host Groups</a><br>
                 [% ELSIF hostgroup != '' %]
                 <a href='status.cgi?hostgroup=all&amp;style=hostdetail'>View Host Status Detail For All Host Groups</a><br>
-                <a href='status.cgi?hostgroup=[% hostgroup %]&amp;style=detail'>View Service Status Detail For This Host Group</a><br>
-                <a href='status.cgi?hostgroup=[% hostgroup %]&amp;style=overview'>View Status Overview For This Host Group</a><br>
-                <a href='status.cgi?hostgroup=[% hostgroup %]&amp;style=summary'>View Status Summary For This Host Group</a><br>
-                <a href='status.cgi?hostgroup=[% hostgroup %]&amp;style=grid'>View Status Grid For This Host Group</a><br>
+                <a href='status.cgi?hostgroup=[% hostgroup | uri %]&amp;style=detail'>View Service Status Detail For This Host Group</a><br>
+                <a href='status.cgi?hostgroup=[% hostgroup | uri %]&amp;style=overview'>View Status Overview For This Host Group</a><br>
+                <a href='status.cgi?hostgroup=[% hostgroup | uri %]&amp;style=summary'>View Status Summary For This Host Group</a><br>
+                <a href='status.cgi?hostgroup=[% hostgroup | uri %]&amp;style=grid'>View Status Grid For This Host Group</a><br>
                 [% ELSE %]
                 <a href='status.cgi?hostgroup=all&amp;style=detail'>View Service Status Detail For All Host Groups</a><br>
                 <a href='status.cgi?hostgroup=all&amp;style=overview'>View Status Overview For All Host Groups</a><br>
@@ -53,7 +52,7 @@
         <td valign="top" align="left" width="33%" nowrap>
           [% PROCESS _status_filter.tt %]
         </td>
-        <td valign="top" align="center" width="33%">
+        <td valign="top" align="center" width="33%" nowrap>
           <div align="center" class='statusTitle'>
             [% IF hostgroup == 'all' %]Host Status Details For All Host Groups
             [% ELSIF hostgroup != '' %]Host Status Details For Host Group '[% hostgroup %]'
@@ -66,21 +65,31 @@
           [% IF c.request.parameters.sortoption %]
           <div class="statusSort" align="CENTER">Entries sorted by <b>[% orderby %]</b> ([% IF orderdir == 'DESC' %]descending[% ELSE %]ascending[% END %])</div>
           [% END %]
+          <br>
         </td>
-        <td valign="top" align="right" width="33%"></td>
+        <td valign="bottom" align="right" width="33%"></td>
       </tr>
     </table>
 
     <div align="center">[% PROCESS _pager.tt %]</div>
 
-    <div class="hint">select host / services with leftclick to send multiple commands. Select multiple with shift + mouse.</div>
-
-    <div class="hint">
-        <a href="javascript:selectAllHosts(true);">select all</a>
-      - <a href="javascript:selectAllHosts(false);">unselect all</a>
-      - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.statusHOSTDOWN','.statusHOSTUNREACHABLE'));">all problems</a>
-      - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.has_downtime'));">all with downtime</a>
-    </div>
+    <table border="0" width="100%" cellpadding=0 cellspacing=0>
+      <tr>
+        <td valign="top" align="left" width="10%" nowrap></td>
+        <td valign="top" align="center" width="80%">
+          <div class="hint">select host with leftclick to send multiple commands. Select multiple with shift + mouse.</div>
+          <div class="hint">
+              <a href="javascript:selectAllHosts(true);">select all</a>
+            - <a href="javascript:selectAllHosts(false);">unselect all</a>
+            - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.statusHOSTDOWN','.statusHOSTUNREACHABLE'));">all problems</a>
+            - <a href="javascript:selectAllHosts(false);selectHostsByClass(Array('.has_downtime'));">all with downtime</a>
+          </div>
+        </td>
+        <td valign="bottom" align="right" width="10%">
+          <a href='[% uri_with(c, 'view_mode' => 'xls') %]'><img src='/thruk/themes/[% theme %]/images/page_white_excel.png' border="0" alt='Export to Excel' title='Export to Excel'></a>&nbsp;
+        </td>
+      </tr>
+    </table>
 
     <div align='center'>
       <table border="0" class='status' width="100%" id="statusTable">
@@ -124,24 +133,24 @@
                 <td align="left">
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
-                      <td align="left" valign="middle" class='[% statusClass %]'><a href='extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]' title='[% h.address %]'>[% h.name %]</a>&nbsp;</td>
+                      <td align="left" valign="middle" class='[% statusClass %]'><a href='extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]' title='[% h.address %]'>[% h.name %]</a>&nbsp;</td>
                     </tr>
                   </table>
                 </td>
                 <td align="right" valign="middle">
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
-                      [% IF h.acknowledged                 %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]#comments"><img src="/thruk/themes/[% theme %]/images/ack.gif" alt="This host problem has been acknowledged" title="This host problem has been acknowledged" border="0" height="20" width="20"></a></td>[% END %]
-                      [% IF comment_count > 0              %]<td align="center" valign="middle"><img src="/thruk/themes/[% theme %]/images/comment.gif" alt="This host has [% comment_count %] comment associated with it" border="0" height="20" width="20" [% info_popup_event_type %]="return overlib('<table border=0 cellpadding=3 cellspacing=0>[% SET hostname = h.name %][% FOR com = comments_by_host.$hostname %]<tr><td nowrap valign=\'top\' align=\'right\'>[% IF date.format(com.entry_time, '%Y-%m-%d') == today %][% date.format(com.entry_time, datetime_format_today) %][% ELSE %][% date.format(com.entry_time, datetime_format) %][% END %]</td><td nowrap valign=\'top\'>[% com.author %]</td><td>[% IF escape_html_tags %][% html_escape(html_escape(com.comment)) %][% ELSE %][% escape_quotes(html_escape(com.comment)) %][% END %]</td><td nowrap valign=\'top\'>[% IF com.entry_type == 1 %]User[% ELSIF com.entry_type == 2 %]Scheduled Downtime[% ELSIF com.entry_type == 3 %]Flap Detection[% ELSIF com.entry_type == 4 %]Acknowledgement[% ELSE %]?[% END %]</td></tr>[% END %]</table>',CAPTION,'[% h.name %] Comments',WIDTH,600,[% c.config.info_popup_options %]);"></td>[% END %]
-                      [% IF h.notifications_enabled == 0   %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/ndisabled.gif" alt="Notifications for this host have been disabled" title="Notifications for this host have been disabled" border="0" height="20" width="20"></a></td>[% END %]
-                      [% IF h.active_checks_enabled == 0   %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/disabled.gif" alt="Checks of this host have been disabled" title="Checks of this host have been disabled" border="0" height="20" width="20"></a></td>[% END %]
-                      [% IF h.is_flapping                  %]<td align="center" valign="middle"><a href='extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]'><img src='/thruk/themes/[% theme %]/images/flapping.gif' border="0" width="20" height="20" alt='This host is flapping between states' title='This host is flapping between states'></a></td>[% END %]
-                      [% IF h.scheduled_downtime_depth > 0 %]<td class="has_downtime" align="center" valign="middle"><img src="/thruk/themes/[% theme %]/images/downtime.gif" alt="This host is currently in a period of scheduled downtime" height="20" width="20" [% info_popup_event_type %]="return overlib('<table border=0 cellpadding=3 cellspacing=0>[% SET hostname = h.name %][% FOR d = downtimes_by_host.$hostname %]<tr><td nowrap valign=\'top\' align=\'right\'>[% IF date.format(d.start_time, '%Y-%m-%d') == today %][% date.format(d.start_time, datetime_format_today) %][% ELSE %][% date.format(d.start_time, datetime_format) %][% END %] until </td><td nowrap valign=\'top\' align=\'right\'>[% IF date.format(d.end_time, '%Y-%m-%d') == today %][% date.format(d.end_time, datetime_format_today) %][% ELSE %][% date.format(d.end_time, datetime_format) %][% END %]</td><td nowrap valign=\'top\'>[% d.author %]</td><td>[% IF escape_html_tags %][% html_escape(html_escape(d.comment)) %][% ELSE %][% escape_quotes(html_escape(d.comment)) %][% END %]</td></tr>[% END %]</table>',CAPTION,'[% h.name %] Downtimes',[% c.config.info_popup_options %]);"></td>[% END %]
-                      [% IF h.is_executing > 0             %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/waiting.gif" alt="This host is currently executing its hostcheck" title="This host is currently executing its hostcheck" border="0" height="20" width="20"></a></td>[% END %]
+                      [% IF h.acknowledged                 %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]#comments"><img src="/thruk/themes/[% theme %]/images/ack.gif" alt="This host problem has been acknowledged" title="This host problem has been acknowledged" border="0" height="20" width="20"></a></td>[% END %]
+                      [% IF comment_count > 0              %]<td align="center" valign="middle"><img src="/thruk/themes/[% theme %]/images/comment.gif" alt="This host has [% comment_count %] comment associated with it" border="0" height="20" width="20" [% info_popup_event_type %]="return overlib('<table border=0 cellpadding=3 cellspacing=0>[% SET hostname = h.name %][% FOR com = comments_by_host.$hostname %]<tr><td nowrap valign=\'top\' align=\'right\'>[% date_format(c, com.entry_time) %]</td><td nowrap valign=\'top\'>[% com.author %]</td><td>[% IF escape_html_tags %][% html_escape(html_escape(com.comment)) %][% ELSE %][% escape_quotes(html_escape(com.comment)) %][% END %]</td><td nowrap valign=\'top\'>[% IF com.entry_type == 1 %]User[% ELSIF com.entry_type == 2 %]Scheduled Downtime[% ELSIF com.entry_type == 3 %]Flap Detection[% ELSIF com.entry_type == 4 %]Acknowledgement[% ELSE %]?[% END %]</td></tr>[% END %]</table>',CAPTION,'[% h.name %] Comments',WIDTH,600,[% c.config.info_popup_options %]);"></td>[% END %]
+                      [% IF h.notifications_enabled == 0   %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/ndisabled.gif" alt="Notifications for this host have been disabled" title="Notifications for this host have been disabled" border="0" height="20" width="20"></a></td>[% END %]
+                      [% IF h.active_checks_enabled == 0   %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/disabled.gif" alt="Checks of this host have been disabled" title="Checks of this host have been disabled" border="0" height="20" width="20"></a></td>[% END %]
+                      [% IF h.is_flapping                  %]<td align="center" valign="middle"><a href='extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]'><img src='/thruk/themes/[% theme %]/images/flapping.gif' border="0" width="20" height="20" alt='This host is flapping between states' title='This host is flapping between states'></a></td>[% END %]
+                      [% IF h.scheduled_downtime_depth > 0 %]<td class="has_downtime" align="center" valign="middle"><img src="/thruk/themes/[% theme %]/images/downtime.gif" alt="This host is currently in a period of scheduled downtime" height="20" width="20" [% info_popup_event_type %]="return overlib('<table border=0 cellpadding=3 cellspacing=0>[% SET hostname = h.name %][% FOR d = downtimes_by_host.$hostname %]<tr><td nowrap valign=\'top\' align=\'right\'>[% date_format(c, d.start_time) %] until </td><td nowrap valign=\'top\' align=\'right\'>[% date_format(c, d.end_time) %]</td><td nowrap valign=\'top\'>[% d.author %]</td><td>[% IF escape_html_tags %][% html_escape(html_escape(d.comment)) %][% ELSE %][% escape_quotes(html_escape(d.comment)) %][% END %]</td></tr>[% END %]</table>',CAPTION,'[% h.name %] Downtimes',[% c.config.info_popup_options %]);"></td>[% END %]
+                      [% IF h.is_executing > 0             %]<td align="center" valign="middle"><a href="extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]"><img src="/thruk/themes/[% theme %]/images/waiting.gif" alt="This host is currently executing its hostcheck" title="This host is currently executing its hostcheck" border="0" height="20" width="20"></a></td>[% END %]
                       [% IF h.notes_url_expanded           %]<td align="center" valign="middle"><a href='[% h.notes_url_expanded %]'[% IF c.config.cgi_cfg.notes_url_target %] target='[% c.config.cgi_cfg.notes_url_target %]'[% END %]><img src='/thruk/themes/[% theme %]/images/notes.gif' border="0" width="20" height="20" alt='View Extra Host Notes' title='View Extra Host Notes'></a></td>[% END %]
                       [% IF h.action_url                   %]<td align="center" valign="middle"><a href='[% h.action_url %]'[% IF c.config.cgi_cfg.action_url_target %] target='[% c.config.cgi_cfg.action_url_target %]'[% END %]><img src='/thruk/themes/[% theme %]/images/action.gif' border="0" width="20" height="20" alt='Perform Extra Host Actions' title='Perform Extra Host Actions'></a></td>[% END %]
-                      [% IF h.icon_image_expanded          %]<td align="center" valign="middle"><a href='extinfo.cgi?type=1&amp;host=[% h.name %]&amp;backend=[% h.peer_key %]'><img src='/thruk/themes/[% theme %]/images/logos/[% h.icon_image_expanded %]' border="0" width="20" height="20" alt='[% h.icon_image_alt %]' title='[% h.icon_image_alt %]'></a></td>[% END %]
-                      <td><a href='status.cgi?host=[% h.name %]'><img src='/thruk/themes/[% theme %]/images/status2.gif' border="0" alt='View Service Details For This Host' title='View Service Details For This Host' width="20" height="20"></a></td>
+                      [% IF h.icon_image_expanded          %]<td align="center" valign="middle"><a href='extinfo.cgi?type=1&amp;host=[% h.name | uri %]&amp;backend=[% h.peer_key %]'><img src='/thruk/themes/[% theme %]/images/logos/[% h.icon_image_expanded %]' border="0" width="20" height="20" alt='[% h.icon_image_alt %]' title='[% h.icon_image_alt %]'></a></td>[% END %]
+                      <td><a href='status.cgi?host=[% h.name | uri %]'><img src='/thruk/themes/[% theme %]/images/status2.gif' border="0" alt='View Service Details For This Host' title='View Service Details For This Host' width="20" height="20"></a></td>
                     </tr>
                   </table>
                 </td>
@@ -149,7 +158,7 @@
             </table>
           </td>
           <td class='[% statusClass %]'>[% status %]</td>
-          <td class='[% class %]' nowrap align="center">[% IF date.format(h.last_check, '%Y-%m-%d') == today %][% date.format(h.last_check, datetime_format_today) %][% ELSE %][% date.format(h.last_check, datetime_format) %][% END %]</td>
+          <td class='[% class %]' nowrap align="center">[% date_format(c, h.last_check) %]</td>
           <td class='[% class %]' nowrap>[% IF h.last_state_change %][% duration(date.now - h.last_state_change) %][% ELSE %][% duration(date.now - program_start) %]+[% END %]</td>
           [% IF h.has_been_checked == 0 %]
             <td class='[% class %]' valign='middle'>Host check scheduled for [% date.format(h.next_check, datetime_format_long) %]</td>

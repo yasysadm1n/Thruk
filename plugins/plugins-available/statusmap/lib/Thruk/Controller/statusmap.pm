@@ -53,12 +53,12 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
     $self->{'all_nodes'} = {};
 
-    my $hosts = $c->{'live'}->selectall_arrayref("GET hosts\n".Thruk::Utils::get_auth_filter($c, 'hosts')."\nColumns: state name alias address address has_been_checked last_state_change plugin_output groups parents", { Slice => {}, AddPeer => 1 });
+    my $hosts = $c->{'live'}->selectall_arrayref("GET hosts\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts')."\nColumns: state name alias address address has_been_checked last_state_change plugin_output groups parents", { Slice => {}, AddPeer => 1 });
 
     # do we need servicegroups?
     if($c->stash->{groupby} eq 'servicegroup') {
         my $new_hosts;
-        my $servicegroups = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: host_name groups\nFilter: groups !=", { Slice => {} });
+        my $servicegroups = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: host_name groups\nFilter: groups !=", { Slice => {} });
         my $servicegroupsbyhost = {};
         if(defined $servicegroups) {
             for my $data (@{$servicegroups}) {
@@ -109,11 +109,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
         $c->stash->{host} = 'rootid';
     }
 
-#print "HTTP/1.0 200 OK\n\n<pre>";
-#print Dumper($json);
-#exit;
-
-    #my $coder = JSON::XS->new->utf8->pretty;  # with indention (bigger)
+    #my $coder = JSON::XS->new->utf8->pretty;  # with indention (bigger and not valid js code)
     my $coder = JSON::XS->new->utf8->shrink;   # shortest possible
     $c->stash->{json}         = $coder->encode($json);
 
@@ -451,10 +447,21 @@ sub _get_json_host {
         $state_pending++;
     }
     if($host->{'last_state_change'}) {
-        $duration = '( for '.Thruk::Utils::filter_duration(time() - $host->{'last_state_change'}).' )';
+        $duration = '( for '.Thruk::Utils::Filter::duration(time() - $host->{'last_state_change'}).' )';
     } else {
-        $duration = '( for '.Thruk::Utils::filter_duration(time() - $program_start).'+ )';
+        $duration = '( for '.Thruk::Utils::Filter::duration(time() - $program_start).'+ )';
     }
+
+    # filter quotes as they break the json output
+    my $plugin_output = $host->{'plugin_output'} || '';
+    $plugin_output =~ s/"//gmx;
+
+    my $alias = $host->{'alias'};
+    $alias =~ s/"//gmx;
+
+    my $address = $host->{'address'};
+    $address =~ s/"//gmx;
+
     my $json_host = {
         'id'   => $host->{'name'},
         'name' => $host->{'name'},
@@ -465,9 +472,9 @@ sub _get_json_host {
             'cssClass'          => $class,
             'status'            => $status,
             'duration'          => $duration,
-            'plugin_output'     => $host->{'plugin_output'} || '',
-            'alias'             => $host->{'alias'},
-            'address'           => $host->{'address'},
+            'plugin_output'     => $plugin_output,
+            'alias'             => $alias,
+            'address'           => $address,
             'state_up'          => $state_up,
             'state_down'        => $state_down,
             'state_unreachable' => $state_unreachable,

@@ -2,6 +2,7 @@ package Thruk::Controller::showlog;
 
 use strict;
 use warnings;
+use utf8;
 use parent 'Catalyst::Controller';
 
 =head1 NAME
@@ -81,7 +82,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     if($errors == 0) {
         $filter .= Thruk::Utils::combine_filter(\@filter, 'And');
         my $query = "GET log\nColumns: time type message state\n".$filter;
-        $query   .= Thruk::Utils::get_auth_filter($c, 'log');
+        $query   .= Thruk::Utils::Auth::get_auth_filter($c, 'log');
         $c->stats->profile(begin => "showlog::fetch");
         my $logs = $c->{'live'}->selectall_arrayref($query, { Slice => 1, AddPeer => 1});
         $c->stats->profile(end   => "showlog::fetch");

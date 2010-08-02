@@ -26,227 +26,6 @@ use File::Slurp;
 ##############################################
 =head1 METHODS
 
-=cut
-
-##############################################
-
-=head2 get_auth_filter
-
-  my $filter_string = get_auth_filter('hosts');
-
-returns a filter which can be used for authorization
-
-=cut
-sub get_auth_filter {
-    my $c    = shift;
-    my $type = shift;
-
-    return("") if $type eq 'status';
-
-    # if authentication is completly disabled
-    if($c->config->{'cgi_cfg'}->{'use_authentication'} == 0 and $c->config->{'cgi_cfg'}->{'use_ssl_authentication'} == 0) {
-        return("");
-    }
-
-    # if the user has access to everthing
-    if($c->check_user_roles('authorized_for_all_hosts') and $c->check_user_roles('authorized_for_all_services')) {
-        return("");
-    }
-
-    # host authorization
-    if($type eq 'hosts') {
-        if($c->check_user_roles('authorized_for_all_hosts')) {
-            return("");
-        }
-        return("Filter: contacts >= ".$c->user->get('username'));
-    }
-
-    # hostgroups authorization
-    elsif($type eq 'hostgroups') {
-        return("");
-    }
-
-    # service authorization
-    elsif($type eq 'services') {
-        if($c->check_user_roles('authorized_for_all_services')) {
-            return("");
-        }
-        if(Thruk->config->{'use_strict_host_authorization'}) {
-            return("Filter: contacts >= ".$c->user->get('username')."\n");
-        } else {
-            return("Filter: contacts >= ".$c->user->get('username')."\nFilter: host_contacts >= ".$c->user->get('username')."\nOr: 2");
-        }
-    }
-
-    # servicegroups authorization
-    elsif($type eq 'servicegroups') {
-        return("");
-    }
-
-    # servicegroups authorization
-    elsif($type eq 'timeperiods') {
-        return("");
-    }
-
-    # comments / downtimes authorization
-    elsif($type eq 'comments' or $type eq 'downtimes') {
-        my @filter;
-        if(!$c->check_user_roles('authorized_for_all_services')) {
-            push @filter, "Filter: service_contacts >= ".$c->user->get('username')."\nFilter: service_description !=\nAnd: 2\n";
-        }
-        if(!$c->check_user_roles('authorized_for_all_hosts')) {
-            if(Thruk->config->{'use_strict_host_authorization'}) {
-                push @filter, "Filter: host_contacts >= ".$c->user->get('username')."\nFilter: service_description =\nAnd: 2\n";
-            } else {
-                push @filter, "Filter: host_contacts >= ".$c->user->get('username')."\n";
-            }
-        }
-        if(scalar @filter == 0) {
-            return("");
-        }
-        if(scalar @filter == 1) {
-            return($filter[0]);
-        }
-        return(join("\n", @filter)."\nOr: ".scalar @filter);
-    }
-
-    # logfile authorization
-    elsif($type eq 'log') {
-        my @filter;
-        if(!$c->check_user_roles('authorized_for_all_services')) {
-            push @filter, "Filter: current_service_contacts >= ".$c->user->get('username')."\nFilter: current_service_description != \nAnd: 2";
-        }
-        if(!$c->check_user_roles('authorized_for_all_hosts')) {
-            if(Thruk->config->{'use_strict_host_authorization'}) {
-                # only allowed for the host itself, not the services
-                push @filter, "Filter: current_host_contacts >= ".$c->user->get('username')."\nFilter: current_service_description = \nAnd: 2\n";
-            } else {
-                # allowed for all hosts and its services
-                push @filter, "Filter: current_host_contacts >= ".$c->user->get('username')."\n";
-            }
-        }
-        if(scalar @filter == 0) {
-            return("");
-        }
-        if(scalar @filter == 1) {
-            return($filter[0]);
-        }
-        return(join("\n", @filter)."\nOr: ".scalar @filter);
-    }
-
-    else {
-        croak("type $type not supported");
-    }
-
-    croak("cannot authorize query");
-    return;
-}
-
-
-##############################################
-
-=head2 filter_duration
-
-  my $string = filter_duration($seconds);
-
-formats a duration into the
-format: 0d 0h 29m 43s
-
-=cut
-sub filter_duration {
-    my $duration = shift;
-    my $withdays = shift;
-
-    croak("undef duration in filter_duration(): ".$duration) unless defined $duration;
-    $duration = $duration * -1 if $duration < 0;
-
-    $withdays = 1 unless defined $withdays;
-
-    croak("unknown withdays in filter_duration(): ".$withdays) if($withdays != 0 and $withdays != 1 and $withdays != 2);
-
-    if($duration < 0) { $duration = time() + $duration; }
-
-    my $days    = 0;
-    my $hours   = 0;
-    my $minutes = 0;
-    my $seconds = 0;
-    if($withdays == 1) {
-        if($duration >= 86400) {
-            $days     = int($duration/86400);
-            $duration = $duration%86400;
-        }
-    }
-    if($duration >= 3600) {
-        $hours    = int($duration/3600);
-        $duration = $duration%3600;
-    }
-    if($duration >= 60) {
-        $minutes  = int($duration/60);
-        $duration = $duration%60;
-    }
-    $seconds = $duration;
-
-    if($withdays == 1) {
-        return($days."d ".$hours."h ".$minutes."m ".$seconds."s");
-    }
-    if($withdays == 2) {
-        return($minutes."min ".$seconds."sec");
-    }
-    return($hours."h ".$minutes."m ".$seconds."s");
-}
-
-
-##############################################
-
-=head2 filter_nl2br
-
-  my $string = filter_nl2br($string);
-
-replace newlines with linebreaks
-
-=cut
-sub filter_nl2br {
-    my $string = shift;
-    $string =~ s/\n/<br\ \/>/gmx;
-    $string =~ s/\r//gmx;
-    $string =~ s/\\n/<br\ \/>/gmx;
-    return $string;
-}
-
-
-##############################################
-
-=head2 filter_sprintf
-
-  my $string = sprintf($format, $list)
-
-wrapper around the internal sprintf
-
-=cut
-sub filter_sprintf {
-    my $format = shift;
-    local $SIG{__WARN__} = sub { Carp::cluck(@_); };
-    return sprintf $format, @_;
-}
-
-
-##############################################
-
-=head2 throw
-
-  throw($string)
-
-can be used to die in templates
-
-=cut
-sub throw {
-    my $string = shift;
-    die($string);
-}
-
-
-##############################################
-
 =head2 parse_date
 
   my $timestamp = parse_date($c, $string)
@@ -259,13 +38,19 @@ sub parse_date {
     my $c      = shift;
     my $string = shift;
     my $timestamp;
-    if($string =~ m/(\d{4})\-(\d{2})\-(\d{2})\ (\d{2}):(\d{2}):(\d{2})/mx) {
-        $timestamp = Mktime($1,$2,$3, $4,$5,$6);
-        $c->log->debug("parse_date: '".$string."' to -> '".(scalar localtime $timestamp)."'");
-    }
-    else {
-        $timestamp = UnixDate($string, '%s');
-        $c->log->debug("parse_date: '".$string."' to -> '".(scalar localtime $timestamp)."'");
+    eval {
+        if($string =~ m/(\d{4})\-(\d{2})\-(\d{2})\ (\d{2}):(\d{2}):(\d{2})/mx) {
+            $timestamp = Mktime($1,$2,$3, $4,$5,$6);
+            $c->log->debug("parse_date: '".$string."' to -> '".(scalar localtime $timestamp)."'");
+        }
+        else {
+            $timestamp = UnixDate($string, '%s');
+            $c->log->debug("parse_date: '".$string."' to -> '".(scalar localtime $timestamp)."'");
+        }
+    };
+    if($@) {
+        $c->detach('/error/index/19');
+        return;
     }
     return $timestamp;
 }
@@ -573,7 +358,7 @@ sub get_service_execution_stats_old {
             'passive_state_change_sum'  => 0,
         };
 
-        my $tmp_data = $c->{'live'}->selectall_arrayref("GET $type\n".Thruk::Utils::get_auth_filter($c, $type)."\nColumns: execution_time has_been_checked last_check latency percent_state_change check_type", { Slice => 1, AddPeer => 1 });
+        my $tmp_data = $c->{'live'}->selectall_arrayref("GET $type\n".Thruk::Utils::Auth::get_auth_filter($c, $type)."\nColumns: execution_time has_been_checked last_check latency percent_state_change check_type", { Slice => 1, AddPeer => 1 });
         if($tmp_data) {
             for my $data (@{$tmp_data}) {
                 my $minall = $c->stash->{'pi_detail'}->{$data->{'peer_key'}}->{'program_start'};
@@ -725,7 +510,7 @@ sub get_service_execution_stats {
             'latency_sum'               => 0,
         };
 
-        my $query = "GET $type\n".Thruk::Utils::get_auth_filter($c, $type)."\n";
+        my $query = "GET $type\n".Thruk::Utils::Auth::get_auth_filter($c, $type)."\n";
         $query .= "Filter: has_been_checked = 1\n";
         $query .= "Filter: check_type = 0\n";
         $query .= "Stats: sum has_been_checked as has_been_checked\n";
@@ -781,7 +566,7 @@ sub get_hostcomments {
 
     $filter = '' unless defined $filter;
     my $hostcomments;
-    my $comments    = $c->{'live'}->selectall_arrayref("GET comments\n".Thruk::Utils::get_auth_filter($c, 'comments')."\n$filter\nFilter: service_description =\nColumns: host_name id", { Slice => 1 });
+    my $comments    = $c->{'live'}->selectall_arrayref("GET comments\n".Thruk::Utils::Auth::get_auth_filter($c, 'comments')."\n$filter\nFilter: service_description =\nColumns: host_name id", { Slice => 1 });
 
     for my $comment (@{$comments}) {
         $hostcomments->{$comment->{'host_name'}}->{$comment->{'id'}} = $comment;
@@ -809,7 +594,7 @@ sub get_servicecomments {
     $c->stats->profile(begin => "Utils::get_servicecomments()");
 
     my $servicecomments;
-    my $comments = $c->{'live'}->selectall_arrayref("GET comments\n".Thruk::Utils::get_auth_filter($c, 'comments')."\n$filter\nFilter: service_description !=\nColumns: host_name service_description id", { Slice => 1 });
+    my $comments = $c->{'live'}->selectall_arrayref("GET comments\n".Thruk::Utils::Auth::get_auth_filter($c, 'comments')."\n$filter\nFilter: service_description !=\nColumns: host_name service_description id", { Slice => 1 });
 
     for my $comment (@{$comments}) {
         $servicecomments->{$comment->{'host_name'}}->{$comment->{'service_description'}}->{$comment->{'id'}} = $comment;
@@ -1002,31 +787,6 @@ sub get_start_end_for_timeperiod_from_param {
 
 ########################################
 
-=head2 name2id
-
-  my $striped_string = name2id($name)
-
-returns a string which can be used as id in html elements
-
-An id must begin with a letter ([A-Za-z]) and may be followed
-by any number of letters, digits ([0-9]), hyphens ("-"),
-underscores ("_"), colons (":"), and periods (".").
-
-=cut
-sub name2id {
-    my $name       = shift;
-    my $opt_prefix = shift || '';
-    my $return = $name;
-    $return =~ s/[^a-zA-Z0-9\-_\.]*//gmx;
-    if($return =~ m/^\d+/gmx) {
-        $return = $opt_prefix."_".$return;
-    }
-    return($return);
-}
-
-
-########################################
-
 =head2 page_data
 
   page_data($c, $data)
@@ -1101,51 +861,6 @@ sub page_data {
 
 ########################################
 
-=head2 uri
-
-  uri($c)
-
-returns a correct uri
-
-=cut
-sub uri {
-    my $c = shift;
-    my $uri = $c->request->uri();
-    $uri =~ s/&/&amp;/gmx;
-    return $uri;
-}
-
-
-########################################
-
-=head2 uri_with
-
-  uri_with($c, $data)
-
-returns a correct uri
-
-=cut
-sub uri_with {
-    my $c    = shift;
-    my $data = shift;
-
-    for my $key (keys %{$data}) {
-        $data->{$key} = undef if $data->{$key} eq 'undef';
-    }
-
-    my $uri;
-    eval {
-        $uri = $c->request->uri_with($data);
-        $uri =~ s/&/&amp;/gmx;
-    };
-    if($@) {
-        confess("ERROR in uri_with(): ".$@);
-    }
-    return $uri;
-}
-
-########################################
-
 =head2 combine_filter
 
   combine_filter($filter_array_ref, $operator)
@@ -1194,20 +909,32 @@ sub set_can_submit_commands {
     my $username = $c->request->{'user'}->{'username'};
 
     # is the contact allowed to send commands?
-    my($can_submit_commands,$alias);
-    eval {
-        my $data = $c->{'live'}->selectall_arrayref("GET contacts\nColumns: can_submit_commands alias\nFilter: name = $username", { Slice => 1 });
-        if(defined $data) {
-            for my $dat (@{$data}) {
-                $alias               = $dat->{'alias'}               if defined $dat->{'alias'};
-                $can_submit_commands = $dat->{'can_submit_commands'} if defined $dat->{'can_submit_commands'};
-            }
+    my($can_submit_commands,$alias,$data);
+    my $cache = $c->cache;
+    my $cached_data = $cache->get($username);
+    if(defined $cached_data->{'can_submit_commands'}) {
+        # got cached data
+        $data = $cached_data->{'can_submit_commands'};
+    }
+    else {
+        eval {
+            $data = $c->{'live'}->selectall_arrayref("GET contacts\nColumns: can_submit_commands alias\nFilter: name = $username", { Slice => 1 });
+            $cached_data->{'can_submit_commands'} = $data;
+            $cache->set($username, $cached_data);
         }
     };
     if($@) {
         $c->log->error("livestatus error: $@");
         $c->detach('/error/index/9');
     }
+
+    if(defined $data) {
+        for my $dat (@{$data}) {
+            $alias               = $dat->{'alias'}               if defined $dat->{'alias'};
+            $can_submit_commands = $dat->{'can_submit_commands'} if defined $dat->{'can_submit_commands'};
+        }
+    }
+
     if(defined $alias) {
         $c->request->{'user'}->{'alias'} = $alias;
     }
@@ -1414,14 +1141,14 @@ sub calculate_availability {
         push @{$services}, { 'host' => $host, 'service' => $service };
 
         if($initialassumedservicestate == -1) {
-            my $service_data = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: state\nLimit: 1", {Slice => 1});
+            my $service_data = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: state\nLimit: 1", {Slice => 1});
             $initial_states->{'services'}->{$host}->{$service} = $service_data->[0]->{'state'};
         }
     }
 
     # all services
     elsif(defined $service and $service eq 'all') {
-        my $all_services = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: host_name description state", { Slice => 1});
+        my $all_services = $c->{'live'}->selectall_arrayref("GET services\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: host_name description state", { Slice => 1});
         my $services_data;
         for my $service (@{$all_services}) {
             $services_data->{$service->{'host_name'}}->{$service->{'description'}} = 1;
@@ -1438,7 +1165,7 @@ sub calculate_availability {
         unless($c->check_permissions('host', $host)) {
             $c->detach('/error/index/5');
         }
-        my $service_data = $c->{'live'}->selectall_hashref("GET services\nFilter: host_name = ".$host."\n".Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: description state", 'description' );
+        my $service_data = $c->{'live'}->selectall_hashref("GET services\nFilter: host_name = ".$host."\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: description state", 'description' );
         $c->stash->{'services'} = { $host =>  $service_data };
         $loghostheadfilter = "Filter: host_name = $host\n";
 
@@ -1451,7 +1178,7 @@ sub calculate_availability {
             }
         }
         if($initialassumedhoststate == -1) {
-            my $host_data = $c->{'live'}->selectall_arrayref("GET hosts\nFilter: name = $host\n".Thruk::Utils::get_auth_filter($c, 'hosts')."\nColumns: state\nLimit: 1", {Slice => 1});
+            my $host_data = $c->{'live'}->selectall_arrayref("GET hosts\nFilter: name = $host\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts')."\nColumns: state\nLimit: 1", {Slice => 1});
             $initial_states->{'hosts'}->{$host} = $host_data->[0]->{'state'};
         }
         push @{$hosts}, $host;
@@ -1459,7 +1186,7 @@ sub calculate_availability {
 
     # all hosts
     elsif(defined $host and $host eq 'all') {
-        my $host_data = $c->{'live'}->selectall_hashref("GET hosts\n".Thruk::Utils::get_auth_filter($c, 'hosts')."\nColumns: name state", 'name' );
+        my $host_data = $c->{'live'}->selectall_hashref("GET hosts\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts')."\nColumns: name state", 'name' );
         $logserviceheadfilter = "Filter: service_description =\n";
         $c->stash->{'hosts'} = $host_data;
         push @{$hosts}, keys %{$host_data};
@@ -1477,8 +1204,8 @@ sub calculate_availability {
             $hostfilter        = "Filter: groups >= $hostgroup\n";
             $loghostheadfilter = "Filter: current_host_groups >= $hostgroup\n";
         }
-        my $host_data = $c->{'live'}->selectall_hashref("GET hosts\n".Thruk::Utils::get_auth_filter($c, 'hosts')."\nColumns: name state\n$hostfilter", 'name' );
-        my $groups    = $c->{'live'}->selectall_arrayref("GET hostgroups\n".Thruk::Utils::get_auth_filter($c, 'hostgroups')."\n$groupfilter\nColumns: name members", { Slice => {} });
+        my $host_data = $c->{'live'}->selectall_hashref("GET hosts\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts')."\nColumns: name state\n$hostfilter", 'name' );
+        my $groups    = $c->{'live'}->selectall_arrayref("GET hostgroups\n".Thruk::Utils::Auth::get_auth_filter($c, 'hostgroups')."\n$groupfilter\nColumns: name members", { Slice => {} });
 
         # join our groups together
         my %joined_groups;
@@ -1524,8 +1251,8 @@ sub calculate_availability {
             $servicefilter        = "Filter: groups >= $servicegroup\n";
             $logserviceheadfilter = "Filter: current_service_groups >= $servicegroup\n";
         }
-        my $all_services = $c->{'live'}->selectall_arrayref("GET services\n".$servicefilter.Thruk::Utils::get_auth_filter($c, 'services')."\nColumns: host_name description state host_state", { Slice => 1});
-        my $groups       = $c->{'live'}->selectall_arrayref("GET servicegroups\n".Thruk::Utils::get_auth_filter($c, 'servicegroups')."\n$groupfilter\nColumns: name members", { Slice => {} });
+        my $all_services = $c->{'live'}->selectall_arrayref("GET services\n".$servicefilter.Thruk::Utils::Auth::get_auth_filter($c, 'services')."\nColumns: host_name description state host_state", { Slice => 1});
+        my $groups       = $c->{'live'}->selectall_arrayref("GET servicegroups\n".Thruk::Utils::Auth::get_auth_filter($c, 'servicegroups')."\n$groupfilter\nColumns: name members", { Slice => {} });
 
         my $service_data;
         for my $service (@{$all_services}) {
@@ -1617,7 +1344,7 @@ sub calculate_availability {
     push @typefilter, "Filter: class = 2\n"; # programm messages
     $logfilter .= join("\n", @typefilter)."\nOr: ".(scalar @typefilter);
 
-    my $log_query = "GET log\n".$logfilter.Thruk::Utils::get_auth_filter($c, 'log')."\nColumns: class time type options state host_name service_description plugin_output";
+    my $log_query = "GET log\n".$logfilter.Thruk::Utils::Auth::get_auth_filter($c, 'log')."\nColumns: class time type options state host_name service_description plugin_output";
     #$c->log->debug($log_query);
     $c->stats->profile(begin => "avail.pm fetchlogs");
     $logs = $c->{'live'}->selectall_arrayref($log_query, { Slice => 1} );
@@ -1692,40 +1419,6 @@ sub set_message {
     return 1;
 }
 
-########################################
-
-=head2 get_message
-
-  get_message($c)
-
-get a message from an cookie, display and delete it
-
-=cut
-sub get_message {
-    my $c       = shift;
-
-    # message from cookie?
-    if(defined $c->request->cookie('thruk_message')) {
-        my $cookie = $c->request->cookie('thruk_message');
-        my($style,$message) = split/~~/mx, $cookie->value;
-
-        $c->res->cookies->{'thruk_message'} = {
-            value   => '',
-            expires => '-1M',
-        };
-
-        return($style, $message);
-    }
-    # message from stash
-    elsif(defined $c->stash->{'thruk_message'}) {
-        my($style,$message) = split/~~/mx, $c->stash->{'thruk_message'};
-        delete $c->res->cookies->{'thruk_message'};
-        return($style, $message);
-    }
-
-    return;
-}
-
 
 ########################################
 
@@ -1744,17 +1437,17 @@ sub ssi_include {
     my $footer_file        = $c->stash->{'page'}."-footer.ssi";
 
     if ( defined $c->config->{ssi_includes}->{$global_header_file} ){
-        $c->stash->{ssi_header} = Thruk::Utils::read_ssi{$global_header_file};
+        $c->stash->{ssi_header} = Thruk::Utils::read_ssi($c, $global_header_file);
     }
     if ( defined $c->config->{ssi_includes}->{$header_file} ){
-        $c->stash->{ssi_header} .= Thruk::Utils::read_ssi{$header_file};
+        $c->stash->{ssi_header} .= Thruk::Utils::read_ssi($c, $header_file);
     }
     # Footer
     if ( defined $c->config->{ssi_includes}->{$global_footer_file} ){
-        $c->stash->{ssi_footer} = Thruk::Utils::read_ssi{$global_footer_file};
+        $c->stash->{ssi_footer} = Thruk::Utils::read_ssi($c, $global_footer_file);
     }
     if ( defined $c->config->{ssi_includes}->{$footer_file} ){
-        $c->stash->{ssi_footer} .= Thruk::Utils::read_ssi{$footer_file};
+        $c->stash->{ssi_footer} .= Thruk::Utils::read_ssi($c, $footer_file);
     }
 
     return 1;
@@ -1765,22 +1458,49 @@ sub ssi_include {
 
 =head2 read_ssi
 
-  read_ssi($file)
+  read_ssi($c, $file)
 
 reads a ssi file or executes it if its executable
 
 =cut
 sub read_ssi {
+   my $c    = shift;
    my $file = shift;
    # retun if file is execitabel
-   if( -x "ssi/$file" ){
-       open(my $ph, '-|', "ssi/$file 2>&1") or carp("cannot execute ssi: $!");
+   if( -x $c->config->{'ssi_path'}.$file ){
+       open(my $ph, '-|', $c->config->{'ssi_path'}.$file.' 2>&1') or carp("cannot execute ssi: $!");
        my $output = <$ph>;
        close($ph);
        return $output;
    }
-   return read_file("ssi/$file") or carp("cannot open ssi: $!");
+   return read_file($c->config->{'ssi_path'}.$file) or carp("cannot open ssi: $!");
 
+}
+
+
+########################################
+
+=head2 version_compare
+
+  version_compare($version1, $version2)
+
+compare too version strings
+
+=cut
+sub version_compare {
+    my($v1,$v2) = @_;
+    confess("version_compare() needs two params") unless defined $v2;
+
+    my @v1 = split/\./mx,$v1;
+    my @v2 = split/\./mx,$v2;
+
+    for(my $x = 0; $x < scalar @v1; $x++) {
+        next if !defined $v2[$x];
+        my $cmp = 0;
+        if($v2[$x] =~ m/^(\d+)/gmx) { $cmp = $1; }
+        return 0 unless $v1[$x] <= $cmp;
+    }
+    return 1;
 }
 
 
@@ -1808,26 +1528,6 @@ sub _initialassumedservicestate_to_state {
     return 'unknown'     if $initialassumedservicestate ==  7; # Service Unknown
     return 'critical'    if $initialassumedservicestate ==  9; # Service Critical
     croak('unknown state: '.$initialassumedservicestate);
-}
-
-
-########################################
-sub _html_escape {
-    my $text = shift;
-
-    return HTML::Entities::encode($text);
-}
-
-
-########################################
-# used to escape html tags so it can be used as javascript string
-sub _escape_quotes {
-    my $text = shift;
-    $text = HTML::Entities::encode($text);
-    $text =~ s/&amp;quot;/&quot;/gmx;
-    $text =~ s/&amp;gt;/>/gmx;
-    $text =~ s/&amp;lt;/</gmx;
-    return $text;
 }
 
 

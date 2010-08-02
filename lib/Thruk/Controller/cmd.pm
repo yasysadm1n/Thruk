@@ -2,6 +2,7 @@ package Thruk::Controller::cmd;
 
 use strict;
 use warnings;
+use utf8;
 use parent 'Catalyst::Controller';
 use Data::Dumper;
 use Template;
@@ -48,7 +49,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     my $query_options = { Slice => 1 };
     if(defined $c->{'request'}->{'parameters'}->{'backend'}) {
         my $backend = $c->{'request'}->{'parameters'}->{'backend'};
-        my $query_options = { Slice => 1, Backend => [ $backend ]};
+        $query_options = { Slice => 1, Backend => [ $backend ]};
     }
 
     my($data);
@@ -178,10 +179,10 @@ sub _remove_all_downtimes {
     # get list of all downtimes
     my $ids;
     if(defined $service) {
-        $ids = $c->{'live'}->selectcol_arrayref("GET downtimes\n".Thruk::Utils::get_auth_filter($c, 'downtimes')."\nFilter: service_description = $service\nFilter: host_name = $host\nColumns: id");
+        $ids = $c->{'live'}->selectcol_arrayref("GET downtimes\n".Thruk::Utils::Auth::get_auth_filter($c, 'downtimes')."\nFilter: service_description = $service\nFilter: host_name = $host\nColumns: id");
     }
     else {
-        $ids = $c->{'live'}->selectcol_arrayref("GET downtimes\n".Thruk::Utils::get_auth_filter($c, 'downtimes')."\nFilter: service_description = \nFilter: host_name = $host\nColumns: id");
+        $ids = $c->{'live'}->selectcol_arrayref("GET downtimes\n".Thruk::Utils::Auth::get_auth_filter($c, 'downtimes')."\nFilter: service_description = \nFilter: host_name = $host\nColumns: id");
     }
     for my $id (@{$ids}) {
         $c->{'request'}->{'parameters'}->{'down_id'} = $id;
@@ -210,12 +211,13 @@ sub _check_for_commands {
 
     # command commited?
     if(defined $cmd_mod and $self->_do_send_command($c)) {
+        Thruk::Utils::set_message($c, 'success_message', 'Commands successfully submitted');
         $self->_redirect_or_success($c, -2);
     } else {
         # no command submited, view commands page
         if($cmd_typ == 55 or $cmd_typ == 56) {
-            $c->stash->{'hostdowntimes'}    = $c->{'live'}->selectall_arrayref("GET downtimes\n".Thruk::Utils::get_auth_filter($c, 'downtimes')."\nFilter: service_description = \nColumns: id host_name start_time", { Slice => {} });
-            $c->stash->{'servicedowntimes'} = $c->{'live'}->selectall_arrayref("GET downtimes\n".Thruk::Utils::get_auth_filter($c, 'downtimes')."\nFilter: service_description != \nColumns: id host_name start_time service_description", { Slice => {} });
+            $c->stash->{'hostdowntimes'}    = $c->{'live'}->selectall_arrayref("GET downtimes\n".Thruk::Utils::Auth::get_auth_filter($c, 'downtimes')."\nFilter: service_description = \nColumns: id host_name start_time", { Slice => {} });
+            $c->stash->{'servicedowntimes'} = $c->{'live'}->selectall_arrayref("GET downtimes\n".Thruk::Utils::Auth::get_auth_filter($c, 'downtimes')."\nFilter: service_description != \nColumns: id host_name start_time service_description", { Slice => {} });
         }
 
         my @possible_backends       = $c->{'live'}->peer_key();
@@ -296,6 +298,8 @@ sub _do_send_command {
     }
 
     # replace parsed dates
+    my $start_time_unix = 0;
+    my $end_time_unix   = 0;
     if(defined $self->{'spread_startdates'} and scalar @{$self->{'spread_startdates'}} > 0) {
         my $new_start_time = shift @{$self->{'spread_startdates'}};
         my $new_date = Thruk::Utils::format_date($new_start_time, '%Y-%m-%d %H:%M:%S');
@@ -308,6 +312,7 @@ sub _do_send_command {
             $c->log->debug("setting start date to: ".$new_date);
             $c->request->parameters->{'start_time'} = $new_date;
         }
+        $start_time_unix = Thruk::Utils::parse_date($c, $c->request->parameters->{'start_time'});
     }
     if(defined $c->request->parameters->{'end_time'}) {
         if($c->request->parameters->{'end_time'} !~ m/(\d{4})\-(\d{2})\-(\d{2})\ (\d{2}):(\d{2}):(\d{2})/mx) {
@@ -315,12 +320,23 @@ sub _do_send_command {
             $c->log->debug("setting end date to: ".$new_date);
             $c->request->parameters->{'end_time'} = $new_date;
         }
+        $end_time_unix = Thruk::Utils::parse_date($c, $c->request->parameters->{'end_time'});
     }
 
     my $tt  = Template->new($c->{'View::TT'});
     my $cmd = '';
     eval {
-        $tt->process( 'cmd/cmd_typ_'.$cmd_typ.'.tt', { c => $c, cmd_tt => 'cmd_line.tt', die_on_errors => 1 }, \$cmd ) || die $tt->error();
+        $tt->process(
+                        'cmd/cmd_typ_'.$cmd_typ.'.tt',
+                        {
+                            c               => $c,
+                            cmd_tt          => 'cmd_line.tt',
+                            start_time_unix => $start_time_unix,
+                            end_time_unix   => $end_time_unix,
+                            die_on_errors   => 1,
+                        },
+                        \$cmd
+                    ) || die $tt->error();
         $cmd =~ s/^\s+//gmx;
         $cmd =~ s/\s+$//gmx;
     };
@@ -333,7 +349,16 @@ sub _do_send_command {
 
     # check for required fields
     my($form,@errors);
-    $tt->process( 'cmd/cmd_typ_'.$cmd_typ.'.tt', { c => $c, cmd_tt => '_get_content.tt' }, \$form ) || die $tt->error();
+    $tt->process(
+                    'cmd/cmd_typ_'.$cmd_typ.'.tt',
+                    {
+                        c               => $c,
+                        cmd_tt          => '_get_content.tt',
+                        start_time_unix => $start_time_unix,
+                        end_time_unix   => $end_time_unix,
+                    },
+                    \$form
+                ) || die $tt->error();
     if(my @matches = $form =~ m/class='(optBoxRequiredItem|optBoxItem)'>(.*?):<\/td>.*?input\s+type='.*?'\s+name='(.*?)'/gmx ) {
         while(scalar @matches > 0) {
             my $req  = shift @matches;
@@ -354,22 +379,25 @@ sub _do_send_command {
     my $backends          = $c->{'request'}->{'parameters'}->{'backend'};
     my @possible_backends = $c->{'live'}->peer_key();
     if(scalar @possible_backends > 1 and !defined $backends) {
-            delete $c->{'request'}->{'parameters'}->{'cmd_mod'};
-            push @errors, { message => 'please select a backend' };
-            $c->stash->{'form_errors'} = \@errors;
-            return(0);
+        delete $c->{'request'}->{'parameters'}->{'cmd_mod'};
+        push @errors, { message => 'please select a backend' };
+        $c->stash->{'form_errors'} = \@errors;
+        return(0);
     }
 
     # send the command
-    $cmd = "COMMAND [".time()."] $cmd";
-    $c->log->debug("sending $cmd");
+    my $options = {};
     if(defined $backends) {
         $c->log->debug("sending to backends: ".Dumper($backends));
-        $c->{'live'}->do($cmd, { Backend => $backends });
-    } else {
-        $c->{'live'}->do($cmd);
+        $options = { Backend => $backends };
     }
-    $c->log->info("[".$c->user->username."] cmd: $cmd");
+
+    for my $cmd_line (split/\n/mx, $cmd) {
+        $cmd_line = 'COMMAND ['.time().'] '.$cmd_line;
+        $c->log->debug('sending '.$cmd_line);
+        $c->{'live'}->do($cmd_line, $options);
+        $c->log->info('['.$c->user->username.'] cmd: '.$cmd_line);
+    }
 
     return(1);
 }

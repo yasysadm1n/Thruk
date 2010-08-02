@@ -2,6 +2,7 @@ package Thruk::Controller::tac;
 
 use strict;
 use warnings;
+use utf8;
 use parent 'Catalyst::Controller';
 
 =head1 NAME
@@ -24,7 +25,7 @@ Catalyst Controller.
 sub index :Path :Args(0) :MyAction('AddDefaults') {
     my ( $self, $c ) = @_;
 
-    my $host_stats    = $c->{'live'}->selectrow_hashref("GET hosts\n".Thruk::Utils::get_auth_filter($c, 'hosts')."
+    my $host_stats    = $c->{'live'}->selectrow_hashref("GET hosts\n".Thruk::Utils::Auth::get_auth_filter($c, 'hosts')."
 Stats: name !=  as total
 Stats: check_type = 0 as total_active
 Stats: check_type = 1 as total_passive
@@ -121,7 +122,7 @@ Stats: childs !=
 StatsAnd: 2 as outages
 ",
     { Slice => {}});
-    my $service_stats = $c->{'live'}->selectrow_hashref("GET services\n".Thruk::Utils::get_auth_filter($c, 'services')."
+    my $service_stats = $c->{'live'}->selectrow_hashref("GET services\n".Thruk::Utils::Auth::get_auth_filter($c, 'services')."
 Stats: description !=  as total
 Stats: check_type = 0 as total_active
 Stats: check_type = 1 as total_passive

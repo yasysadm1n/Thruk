@@ -1,4 +1,4 @@
-[% USE date %]
+﻿[% USE date %]
 [% PROCESS _header.tt %]
 
     <table border="0" width="100%">
@@ -47,7 +47,7 @@
                       [% FOREACH pd IN backends %]
                         <td class='dataVal' nowrap>
                           [% IF pi_detail.$pd.program_start %]
-                            [% date.format(pi_detail.$pd.program_start, datetime_format) %]
+                            [% date_format(c, pi_detail.$pd.program_start) %]
                           [% ELSIF backend_detail.$pd.disabled == 2 %]
                           <div class='peerDIS'>&nbsp;&nbsp;HIDDEN</div>
                           [% ELSE %]
@@ -65,13 +65,13 @@
                     <tr>
                       <td class='dataVar' nowrap>Last External Command Check:</td>
                       [% FOREACH pd IN backends %]
-                      <td class='dataVal' nowrap>[% IF pi_detail.$pd.program_start %][% IF pi_detail.$pd.last_command_check %][% date.format(pi_detail.$pd.last_command_check, datetime_format) %][% ELSE %]N/A[% END %][% END %]</td>
+                      <td class='dataVal' nowrap>[% IF pi_detail.$pd.program_start %][% IF pi_detail.$pd.last_command_check %][% date_format(c, pi_detail.$pd.last_command_check) %][% ELSE %]N/A[% END %][% END %]</td>
                       [% END %]
                     </tr>
                     <tr>
                       <td class='dataVar' nowrap>Last Log File Rotation:</td>
                       [% FOREACH pd IN backends %]
-                      <td class='dataVal' nowrap>[% IF pi_detail.$pd.program_start %][% IF pi_detail.$pd.last_log_rotation %][% date.format(pi_detail.$pd.last_log_rotation, datetime_format) %][% ELSE %]N/A[% END %][% END %]</td>
+                      <td class='dataVal' nowrap>[% IF pi_detail.$pd.program_start %][% IF pi_detail.$pd.last_log_rotation %][% date_format(c, pi_detail.$pd.last_log_rotation) %][% ELSE %]N/A[% END %][% END %]</td>
                       [% END %]
                     </tr>
                     <tr>
@@ -208,6 +208,9 @@
             <table border="1" cellpadding="0" cellspacing="0" class='command'>
               <tr>
                 <td>
+                  [% UNLESS c.check_cmd_permissions('system') %]
+                  <div align=center class='infoMessage'>Your account does not have permissions to execute commands.<br>
+                  [% ELSE %]
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr class='command'>
                       <td><img src='/thruk/themes/[% theme %]/images/stop.gif' border="0" alt='Shutdown the Backend Process' title='Shutdown the Backend Process' width="20" height="20"></td>
@@ -347,7 +350,7 @@
                       <td class='command'><a href='cmd.cgi?cmd_typ=82'>Enable performance data</a></td>
                     </tr>
                     [% END %]
-
+                    [% END %]
                   </table>
                 </td>
               </tr>

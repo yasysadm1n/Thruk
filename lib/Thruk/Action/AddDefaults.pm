@@ -40,33 +40,7 @@ before 'execute' => sub {
     Thruk::Utils::read_cgi_cfg($c);
 
     ###############################
-    # get livesocket object
-    my %disabled_backends;
-    my $nr_disabled = 0;
-    if(defined $c->request->cookie('thruk_backends')) {
-        for my $val (@{$c->request->cookie('thruk_backends')->{'value'}}) {
-            my($key, $value) = split/=/mx, $val;
-            next unless defined $value;
-            $disabled_backends{$key} = $value;
-            $nr_disabled++ if $value == 2;
-        }
-    }
-    elsif(defined $c->{'live'}) {
-        my $livestatus_config = $c->{'live'}->get_livestatus_conf();
-        $c->log->debug("livestatus config: ".Dumper($livestatus_config));
-        for my $peer (@{$livestatus_config->{'peer'}}) {
-            if(defined $peer->{'hidden'} and $peer->{'hidden'} == 1) {
-                $disabled_backends{$peer->{'peer'}} = 2;
-                $nr_disabled++;
-            }
-        }
-    }
-    if(defined $c->{'live'}) {
-        $c->{'live'}->_disable_backends(\%disabled_backends);
-    }
-    my $backend  = $c->{'request'}->{'parameters'}->{'backend'};
-    $c->stash->{'param_backend'}  = $backend;
-
+    # Authentication
     $c->log->debug("checking auth");
     unless ($c->user_exists) {
         $c->log->debug("user not authenticated yet");
@@ -77,8 +51,6 @@ before 'execute' => sub {
         };
     }
     $c->log->debug("user authenticated as: ".$c->user->get('username'));
-
-    ###############################
     if($c->user_exists) {
         $c->stash->{'remote_user'}  = $c->user->get('username');
     } else {
@@ -86,32 +58,81 @@ before 'execute' => sub {
     }
 
     ###############################
-    my @possible_backends = $c->{'live'}->peer_key();
-    my %backend_detail;
-    for my $back (@possible_backends) {
-        $backend_detail{$back} = {
-            "name"     => $c->{'live'}->_get_peer_by_key($back)->peer_name(),
-            "addr"     => $c->{'live'}->_get_peer_by_key($back)->peer_addr(),
-            "disabled" => $disabled_backends{$back} || 0,
-        };
-    }
-    $c->stash->{'backends'}           = \@possible_backends;
-    $c->stash->{'backend_detail'}     = \%backend_detail;
+    # read cached data
+    my $cache = $c->cache;
+    my $cached_data = $cache->get($c->stash->{'remote_user'});
+    $c->log->debug("cached data:");
+    $c->log->debug(Dumper($cached_data));
 
     ###############################
-    $c->stash->{'escape_html_tags'}   = $c->config->{'cgi_cfg'}->{'escape_html_tags'};
-    $c->stash->{'show_context_help'}  = $c->config->{'cgi_cfg'}->{'show_context_help'};
+    # get livesocket object
+    my $disabled_backends = {};
+    if(defined $c->request->cookie('thruk_backends')) {
+        for my $val (@{$c->request->cookie('thruk_backends')->{'value'}}) {
+            my($key, $value) = split/=/mx, $val;
+            next unless defined $value;
+            $disabled_backends->{$key} = $value;
+        }
+    }
+    elsif(defined $c->{'live'}) {
+        my $livestatus_config = $c->{'live'}->get_livestatus_conf();
+        $c->log->debug("livestatus config: ".Dumper($livestatus_config));
+        for my $peer (@{$livestatus_config->{'peer'}}) {
+            if(defined $peer->{'hidden'} and $peer->{'hidden'} == 1) {
+                $disabled_backends->{$peer->{'peer'}} = 2;
+            }
+        }
+    }
+    my $has_groups = 0;
+    if(defined $c->{'live'}) {
+        my $livestatus_config = $c->{'live'}->get_livestatus_conf();
+        for my $peer (@{$livestatus_config->{'peer'}}) {
+            if(defined $peer->{'groups'}) {
+                my $real_peer = $c->{'live'}->_get_peer_by_addr($peer->{'peer'});
+                $has_groups = 1;
+                $disabled_backends->{$real_peer->{'key'}} = 4;  # completly hidden
+                $disabled_backends->{$peer->{'peer'}} = 4;      # completly hidden
+            }
+        }
+        $c->{'live'}->_disable_backends($disabled_backends);
+    }
 
     ###############################
     # add program status
     # this is also the first query on every page, so do the
     # backend availability checks here
     $c->stats->profile(begin => "AddDefaults::get_proc_info");
+    my $last_program_restart = 0;
     eval {
-        my $processinfo          = $c->{'live'}->selectall_hashref("GET status\n".Thruk::Utils::get_auth_filter($c, 'status')."\nColumns: livestatus_version program_version accept_passive_host_checks accept_passive_service_checks check_external_commands check_host_freshness check_service_freshness enable_event_handlers enable_flap_detection enable_notifications execute_host_checks execute_service_checks last_command_check last_log_rotation nagios_pid obsess_over_hosts obsess_over_services process_performance_data program_start interval_length", 'peer_key', { AddPeer => 1});
+        my $processinfo          = $c->{'live'}->selectall_hashref("GET status\n".Thruk::Utils::Auth::get_auth_filter($c, 'status')."\nColumns: livestatus_version program_version accept_passive_host_checks accept_passive_service_checks check_external_commands check_host_freshness check_service_freshness enable_event_handlers enable_flap_detection enable_notifications execute_host_checks execute_service_checks last_command_check last_log_rotation nagios_pid obsess_over_hosts obsess_over_services process_performance_data program_start interval_length", 'peer_key', { AddPeer => 1});
         my $overall_processinfo  = Thruk::Utils::calculate_overall_processinfo($processinfo);
         $c->stash->{'pi'}        = $overall_processinfo;
         $c->stash->{'pi_detail'} = $processinfo;
+
+        # set last programm restart
+        for my $backend (keys %{$processinfo}) {
+            $last_program_restart = $processinfo->{$backend}->{'program_start'} if $last_program_restart < $processinfo->{$backend}->{'program_start'};
+
+            # do the livestatus version check
+            my $cached_already_warning_version = $cache->get('already_warning_version');
+            if(!defined $cached_already_warning_version and defined $c->config->{'min_livestatus_version'}) {
+                unless(Thruk::Utils::version_compare($c->config->{'min_livestatus_version'}, $processinfo->{$backend}->{'livestatus_version'})) {
+                    $cache->set('already_warning_version', 1);
+                    $c->log->warn("backend '".$processinfo->{$backend}->{'peer_name'}."' uses too old livestatus version: '".$processinfo->{$backend}->{'livestatus_version'}."', minimum requirement is at least '".$c->config->{'min_livestatus_version'}."'. Upgrade if you experience problems.");
+                }
+            }
+        }
+
+        # check if we have to build / clean our per user cache
+        if(   !defined $cached_data
+           or !defined $cached_data->{'prev_last_program_restart'}
+           or $cached_data->{'prev_last_program_restart'} < $last_program_restart
+          ) {
+            $cached_data = {
+                'prev_last_program_restart' => $last_program_restart,
+            };
+            $cache->set($c->stash->{'remote_user'}, $cached_data);
+        }
 
         # check our backends uptime
         if(defined $c->config->{'delay_pages_after_backend_reload'} and $c->config->{'delay_pages_after_backend_reload'} > 0) {
@@ -126,11 +147,36 @@ before 'execute' => sub {
         }
     };
     if($@) {
+        $self->_set_possible_backends($c, $disabled_backends);
         $c->log->error("livestatus error: $@");
         $c->detach('/error/index/9');
     }
-    if(!defined $c->stash->{'pi_detail'} and $nr_disabled < scalar @possible_backends) {
-        $c->log->error("got no result from any enabled backend, please check backend connection and logfiles");
+
+    ###############################
+    # disable backends by groups
+    if($has_groups and defined $c->{'live'}) {
+        $disabled_backends = $self->_disable_backends_by_group($c, $disabled_backends);
+    }
+    $self->_set_possible_backends($c, $disabled_backends);
+
+    ###############################
+    my $backend  = $c->{'request'}->{'parameters'}->{'backend'};
+    $c->stash->{'param_backend'}  = $backend;
+    if(defined $backend and defined $c->{'live'}) {
+        my @possible_backends = $c->{'live'}->peer_key();
+        for my $back (@possible_backends) {
+            if($back ne $backend) {
+                $c->{'live'}->disable($back);
+            }
+        }
+    }
+
+    ###############################
+    $c->stash->{'escape_html_tags'}   = $c->config->{'cgi_cfg'}->{'escape_html_tags'};
+    $c->stash->{'show_context_help'}  = $c->config->{'cgi_cfg'}->{'show_context_help'};
+
+    if(!defined $c->stash->{'pi_detail'} and $self->_any_backend_enabled($c)) {
+        $c->log->error("got no result from any backend, please check backend connection and logfiles");
         $c->detach('/error/index/9');
     }
     $c->stats->profile(end => "AddDefaults::get_proc_info");
@@ -159,6 +205,77 @@ after 'execute' => sub {
 
     $c->stats->profile(end => "AddDefaults::after");
 };
+
+
+
+########################################
+
+=head2 _set_possible_backends
+
+  _set_possible_backends()
+
+  possible values are:
+    0 = reachable
+    1 = unreachable
+    2 = hidden by user
+    3 = hidden by backend param
+    4 = disabled by missing group auth
+
+=cut
+sub _set_possible_backends {
+    my ($self,$c,$disabled_backends) = @_;
+
+    my @possible_backends = $c->{'live'}->peer_key();
+    my %backend_detail;
+    my @new_possible_backends;
+
+    for my $back (@possible_backends) {
+        if(!defined $disabled_backends->{$back} or $disabled_backends->{$back} != 4) {
+            $backend_detail{$back} = {
+                "name"     => $c->{'live'}->_get_peer_by_key($back)->peer_name(),
+                "addr"     => $c->{'live'}->_get_peer_by_key($back)->peer_addr(),
+                "disabled" => $disabled_backends->{$back} || 0,
+            };
+            push @new_possible_backends, $back;
+        }
+    }
+    $c->stash->{'backends'}           = \@new_possible_backends;
+    $c->stash->{'backend_detail'}     = \%backend_detail;
+
+    return;
+}
+
+########################################
+sub _disable_backends_by_group {
+    my ($self,$c,$disabled_backends) = @_;
+
+    my $livestatus_config = $c->{'live'}->get_livestatus_conf();
+    $c->{'live'}->enable();
+    my $contactgroups = $c->{'live'}->_get_contactgroups_by_contact($c, $c->stash->{'remote_user'});
+    for my $peer (@{$livestatus_config->{'peer'}}) {
+        if(defined $peer->{'groups'}) {
+            for my $group (split/\s*,\s*/mx, $peer->{'groups'}) {
+                if(defined $contactgroups->{$group}) {
+                    $c->log->debug("found contact ".$c->user->get('username')." in contactgroup ".$group);
+                    delete $disabled_backends->{$peer->{'peer'}};
+                    last;
+                }
+            }
+        }
+    }
+    $c->{'live'}->_disable_backends($disabled_backends);
+
+    return $disabled_backends;
+}
+
+########################################
+sub _any_backend_enabled {
+    my ($self,$c) = @_;
+    for my $peer_key (keys %{$c->stash->{'backend_detail'}}) {
+        return 1 if $c->stash->{'backend_detail'}->{$peer_key}->{'disabled'} == 0;
+    }
+    return;
+}
 
 __PACKAGE__->meta->make_immutable;
 

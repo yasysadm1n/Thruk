@@ -2,6 +2,7 @@ package Thruk::Controller::Root;
 
 use strict;
 use warnings;
+use utf8;
 use parent 'Catalyst::Controller';
 use Data::Dumper;
 use URI::Escape;
@@ -49,7 +50,7 @@ sub begin : Private {
             $show_nav_button = 1;
         }
         $use_frames = 1;
-        if($c->{'request'}->{'parameters'}->{'nav'} == 1) {
+        if($c->{'request'}->{'parameters'}->{'nav'} eq '1') {
             $use_frames = 0;
         }
     }
@@ -119,14 +120,38 @@ sub begin : Private {
         $c->detach("/error/index/14");
     }
 
+    if(Thruk->config->{'use_frames'} == 0) {
+        Thruk::Utils::Menu::read_navigation($c);
+    }
+
     return 1;
 }
 
 ######################################
-# auto, runs on every request
-#sub auto : Private {
-#    my ( $self, $c ) = @_;
-#}
+
+=head2 auto
+
+auto, runs on every request
+
+redirects mobile browser to mobile cgis if enabled
+
+=cut
+sub auto : Private {
+    my ( $self, $c ) = @_;
+
+    if(!defined Thruk->config->{'use_feature_mobile'} or Thruk->config->{'use_feature_mobile'} != 1) {
+        return 1;
+    }
+
+    if(defined $c->{'request'}->{'headers'}->{'user-agent'}
+       and $c->{'request'}->{'headers'}->{'user-agent'} =~ m/iPhone/mx
+       and defined $c->{'request'}->{'action'}
+       and $c->{'request'}->{'action'} =~ m/^(\/|thruk|)$/mx
+    ) {
+        return $c->redirect("/thruk/cgi-bin/mobile.cgi");
+    }
+    return 1;
+}
 
 
 ######################################
@@ -249,6 +274,8 @@ sub thruk_side_html : Path('/thruk/side.html') {
     if(!$c->stash->{'use_frames'} and defined $target and $target eq '_parent') {
         $c->stash->{'target'} = '_parent';
     }
+
+    Thruk::Utils::Menu::read_navigation($c);
 
     $c->stash->{'use_frames'} = 1;
     $c->stash->{'template'}   = 'side.tt';

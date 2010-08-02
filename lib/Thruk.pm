@@ -4,11 +4,18 @@ use 5.008000;
 use strict;
 use warnings;
 
+use utf8;
 use Carp;
 use Catalyst::Log::Log4perl;
 use Thruk::Utils;
 use Thruk::Utils::Livestatus;
+use Thruk::Utils::Auth;
+use Thruk::Utils::Filter;
+use Thruk::Utils::Menu;
 use Catalyst::Runtime '5.70';
+
+binmode(STDOUT, ":utf8");
+binmode(STDERR, ":utf8");
 
 ###################################################
 # Set flags and add plugins for the application
@@ -17,7 +24,6 @@ use Catalyst::Runtime '5.70';
 
 use parent qw/Catalyst/;
 use Catalyst qw/
-                Unicode::Encoding
                 Authentication
                 Authorization::ThrukRoles
                 CustomErrorMessage
@@ -25,9 +31,12 @@ use Catalyst qw/
                 StackTrace
                 Static::Simple
                 Redirect
+                Cache
+                Unicode::Encoding
                 Compress::Gzip
+                Thruk::RemoveNastyCharsFromHttpParam
                 /;
-our $VERSION = '0.64';
+our $VERSION = '0.68';
 
 ###################################################
 # Configure the application.
@@ -39,41 +48,44 @@ our $VERSION = '0.64';
 # with a external configuration file acting as an override for
 # local deployment.
 my $project_root = __PACKAGE__->config->{home};
-__PACKAGE__->config('name'                   => 'Thruk',
+my %config = ('name'                   => 'Thruk',
                     'version'                => $VERSION,
-                    'released'               => 'June 01, 2010',
+                    'released'               => 'July 08, 2010',
                     'encoding'               => 'UTF-8',
                     'image_path'             => $project_root.'/root/thruk/images',
                     'project_root'           => $project_root,
+                    'min_livestatus_version' => '1.1.3',
                     'default_view'           => 'TT',
                     'View::TT'               => {
                         TEMPLATE_EXTENSION => '.tt',
                         ENCODING           => 'utf8',
                         INCLUDE_PATH       => $project_root.'/templates',
                         FILTERS            => {
-                                                'duration'     => \&Thruk::Utils::filter_duration,
-                                                'nl2br'        => \&Thruk::Utils::filter_nl2br,
+                                                'duration'     => \&Thruk::Utils::Filter::duration,
+                                                'nl2br'        => \&Thruk::Utils::Filter::nl2br,
                                             },
                         PRE_DEFINE         => {
-                                                'sprintf'      => \&Thruk::Utils::filter_sprintf,
-                                                'duration'     => \&Thruk::Utils::filter_duration,
-                                                'name2id'      => \&Thruk::Utils::name2id,
-                                                'uri'          => \&Thruk::Utils::uri,
-                                                'uri_with'     => \&Thruk::Utils::uri_with,
-                                                'html_escape'  => \&Thruk::Utils::_html_escape,
-                                                'escape_quotes'=> \&Thruk::Utils::_escape_quotes,
-                                                'get_message'  => \&Thruk::Utils::get_message,
-                                                'throw'        => \&Thruk::Utils::throw,
+                                                'sprintf'      => \&Thruk::Utils::Filter::sprintf,
+                                                'duration'     => \&Thruk::Utils::Filter::duration,
+                                                'name2id'      => \&Thruk::Utils::Filter::name2id,
+                                                'uri'          => \&Thruk::Utils::Filter::uri,
+                                                'uri_with'     => \&Thruk::Utils::Filter::uri_with,
+                                                'html_escape'  => \&Thruk::Utils::Filter::html_escape,
+                                                'escape_quotes'=> \&Thruk::Utils::Filter::escape_quotes,
+                                                'get_message'  => \&Thruk::Utils::Filter::get_message,
+                                                'throw'        => \&Thruk::Utils::Filter::throw,
+                                                'date_format'  => \&Thruk::Utils::Filter::date_format,
                                             },
                         PRE_CHOMP          => 1,
                         POST_CHOMP         => 1,
                         TRIM               => 1,
                         CACHE_SIZE         => 0,
                         COMPILE_EXT        => '.ttc',
-                        COMPILE_DIR        => '/tmp/ttc',
+                        COMPILE_DIR        => '/tmp/ttc_'.$>, # use uid to make tmp dir uniq
                         STAT_TTL           => 60,
                         STRICT             => 0,
 #                        DEBUG              => 'all',
+                        render_die         => 1,
                     },
                     'View::GD'               => {
                         gd_image_type      => 'png',
@@ -95,10 +107,17 @@ __PACKAGE__->config('name'                   => 'Thruk',
                         'error-template'    => 'error.tt',
                         'response-status'   => 500,
                     },
-                    'static' => {
+                    'static'               => {
                         'ignore_extensions' => [ qw/tpl tt tt2/ ],
                     },
+                    'Plugin::Cache'        => {
+                        'backend'           => {
+                          'class'            => "Catalyst::Plugin::Cache::Backend::Memory",
+                        },
+                    },
 );
+$config{'View::Excel::Template::Plus'}->{'etp_config'} = $config{'View::TT'}; # use same config for View::Excel as in View::TT
+__PACKAGE__->config(%config);
 
 ###################################################
 # get installed plugins
@@ -108,18 +127,27 @@ BEGIN {
         my $addon_name = $addon;
         $addon_name =~ s/\/$//gmx;
         $addon_name =~ s/^.*\///gmx;
+
+        # does the plugin directory exist?
+        if(! -d $project_root.'/root/thruk/plugins/') {
+            mkdir($project_root.'/root/thruk/plugins/') or die('cannot create '.$project_root.'/root/thruk/plugins/ : '.$!);
+        }
+
         # lib directory included?
         if(-d $addon.'lib') {
             unshift(@INC, $addon.'lib')
         }
+
         # template directory included?
         if(-d $addon.'templates') {
             unshift @{__PACKAGE__->config->{templates_paths}}, $addon.'templates'
         }
+
         # static content included?
         if(-d $addon.'root') {
-            unlink($project_root.'/root/plugins/'.$addon_name);
-            symlink($addon.'root', $project_root.'/root/plugins/'.$addon_name);
+            my $target_symlink = $project_root.'/root/thruk/plugins/'.$addon_name;
+            if(-e $target_symlink) { unlink($target_symlink) or die("cannot unlink: ".$target_symlink." : $!"); }
+            symlink($addon.'root', $target_symlink) or die("cannot create ".$target_symlink." : ".$!);
         }
     }
 }
@@ -151,6 +179,7 @@ for my $entry (readdir($dh)) {
 }
 closedir $dh;
 __PACKAGE__->config->{'ssi_includes'} = \%ssi;
+__PACKAGE__->config->{'ssi_path'}     = $ssi_dir;
 
 ###################################################
 # Start the application

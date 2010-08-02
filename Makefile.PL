@@ -27,12 +27,13 @@ requires 'Path::Class'                            => 0.18;
 requires 'Config::General'                        => 2.44;
 requires 'File::Copy::Recursive'                  => 0.38;
 requires 'Scalar::Util'                           => 1.21;
+requires 'List::Util::XS'                         => 0;
 requires 'URI::Escape'                            => 0;
 requires 'parent'                                 => 0.223;
 requires 'Moose'                                  => 0.98;
 requires 'MooseX::MethodAttributes::Inheritable'  => 0.20;
 requires 'MooseX::Role::WithOverloading'          => 0.05;
-requires 'Monitoring::Livestatus'                 => 0.52;
+requires 'Monitoring::Livestatus'                 => 0.54;
 requires 'Monitoring::Availability'               => 0.12;
 requires 'MIME::Types'                            => 0.00;
 requires 'HTTP::Body'                             => 1.07;
@@ -50,6 +51,7 @@ requires 'HTML::Entities'                         => 3.64;
 requires 'File::Slurp'                            => 0.00;
 requires 'FindBin'                                => 0.00;
 requires 'Date::Manip'                            => 0.00;
+requires 'Excel::Template'                        => 0.32;
 requires 'Class::Accessor::Fast'                  => 0.34;
 requires 'Log::Dispatch::File'                    => 2.26;
 requires 'Devel::StackTrace'                      => 0.0;
@@ -61,12 +63,14 @@ requires 'Catalyst::Plugin::StackTrace'           => 0.11;
 requires 'Catalyst::View::TT'                     => 0.32;
 requires 'Catalyst::View::GD'                     => 0.01;
 requires 'Catalyst::View::JSON'                   => 0.00;
+requires 'Catalyst::View::Excel::Template::Plus'  => 0.03;
 requires 'Catalyst::Plugin::Authentication'       => 0.10016;
 requires 'Catalyst::Plugin::Authorization::Roles' => 0.08;
 requires 'Catalyst::Plugin::CustomErrorMessage'   => 0.04;
 requires 'Catalyst::Plugin::Redirect'             => 0.02;
 requires 'Catalyst::Plugin::Compress::Gzip'       => 0;
 requires 'Catalyst::Plugin::Unicode::Encoding'    => 0.00;
+requires 'Catalyst::Plugin::Cache'                => 0.00;
 requires 'Catalyst::Log::Log4perl'                => 1.04;
 requires 'Catalyst::Engine::FastCGI'              => 0;
 requires 'Catalyst::Devel'                        => 1.26;
@@ -78,6 +82,7 @@ requires 'FCGI::ProcManager::MaxRequests'         => 0;
 # normal package installation
 # install them by hand if you plan author tests
 #test_requires 'HTML::Lint';
+#test_requires 'File::BOM';
 #test_requires 'Test::Pod'                         => 1.40;
 #test_requires 'Test::Perl::Critic';
 #test_requires 'Test::Pod::Coverage';
@@ -110,6 +115,7 @@ WriteAll;
 # patch our makefile
 my $new_makefile = '';
 open(my $fh, '<', 'Makefile') or die("cannot open Makefile");
+my $found_make_create_distdir = 0;
 while(<$fh>) {
     my $line = $_;
     if($line =~ m/^install\s*:/mx) {
@@ -121,6 +127,18 @@ do_not_install :
 
 install :: do_not_install pure_install doc_install
 EOT
+    }
+    # search the create_distdir part
+    if($line =~ m/create_distdir\s*:/mx) {
+        $found_make_create_distdir = 1;
+    }
+    if($found_make_create_distdir and $line =~ m/^\s*$/mx) {
+        $found_make_create_distdir = 0;
+        my $cp_option;
+        $cp_option = "-d" if $^O eq 'linux';
+        $cp_option = "-R" if $^O eq 'freebsd';
+        $cp_option = "-R" if $^O eq 'darwin';
+        $line = "\t".'for file in `cat MANIFEST`; do if [ -d $$file -a -L $$file ]; then $(CP) '.$cp_option.' $$file $(DISTVNAME)/`dirname $$file`/; fi; done'."\n".$line if defined $cp_option;
     }
     $new_makefile .= $line;
 }

@@ -1,8 +1,6 @@
-[%# which one is authorized? #%]
-[% IF c.check_user_roles('is_authorized_for_read_only')
-   || (!c.check_user_roles('authorized_for_all_service_commands') && !c.check_permissions('servicegroup', c.request.parameters.servicegroup))
-%]
-[% WRAPPER error.tt errorMessage = "you are not authorized for this command" errorDescription = "check your configuration if you believe this is an error" %][% END %]
+﻿[%# which one is authorized? #%]
+[% IF !c.check_cmd_permissions('servicegroup', c.request.parameters.servicegroup) %]
+  [% WRAPPER error.tt errorMessage = "you are not authorized for this command" errorDescription = "check your configuration if you believe this is an error" %][% END %]
 [% ELSE %]
 
 [%# description used by the commands page #%]
@@ -15,7 +13,10 @@
 [% BLOCK action%]
     [% servicegroup_name    = c.request.parameters.servicegroup %]
 
-    [% IF c.request.parameters.ahas %]DISABLE_SERVICEGROUP_HOST_NOTIFICATIONS[% ELSE %]DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS[% END %];[% sprintf("%s",servicegroup_name) %]
+    [% IF c.request.parameters.ahas %]
+        DISABLE_SERVICEGROUP_HOST_NOTIFICATIONS;[% sprintf("%s",servicegroup_name) %]
+    [% END +%]
+    DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS;[% sprintf("%s",servicegroup_name) %]
 [% END %]
 
 [%# definition of the html form data #%]
