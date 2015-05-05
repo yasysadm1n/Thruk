@@ -55,8 +55,8 @@ show our 404 error page
 # TODO:
 #sub default {
 #    my( $c ) = @_;
-#    $c->response->body('Page not found');
-#    return $c->response->status(404);
+#    $c->res->body('Page not found');
+#    return $c->res->code(404);
 #}
 
 ######################################

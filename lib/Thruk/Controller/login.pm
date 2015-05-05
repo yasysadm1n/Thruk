@@ -52,8 +52,8 @@ sub index {
         if($keywords eq 'logout') {
             _invalidate_current_session($c, $cookie_path, $sdir);
             Thruk::Utils::set_message( $c, 'success_message', 'logout successful' );
-            return $c->response->redirect($logoutref) if $logoutref;
-            return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/login.cgi");
+            return $c->redirect_to($logoutref) if $logoutref;
+            return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi");
         }
 
         if($keywords eq 'nocookie') {
@@ -105,13 +105,13 @@ sub index {
         };
         if(   (!defined $testcookie or !$testcookie->value)
            && (!defined $c->{'request'}->{'headers'}->{'user-agent'} or $c->{'request'}->{'headers'}->{'user-agent'} !~ m/wget/mix)) {
-            return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/login.cgi?nocookie");
+            return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi?nocookie");
         } else {
             $c->stats->profile(begin => "login::external_authentication");
             my $success = Thruk::Utils::CookieAuth::external_authentication($c->config, $login, $pass, $c->req->{'address'}, $c->stats);
             $c->stats->profile(end => "login::external_authentication");
             if($success eq '-1') {
-                return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/login.cgi?problem&".$referer);
+                return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi?problem&".$referer);
             }
             elsif($success) {
                 $c->res->cookies->{'thruk_auth'} = {
@@ -124,11 +124,11 @@ sub index {
                     my $cookie_hook = 'REMOTE_USER="'.$login.'" '.$c->config->{'cookie_auth_login_hook'}.' >/dev/null 2>&1 &';
                     `$cookie_hook`;
                 }
-                return $c->response->redirect($referer);
+                return $c->redirect_to($referer);
             } else {
                 $c->log->info("login failed for $login on $referer");
                 Thruk::Utils::set_message( $c, 'fail_message', 'login failed' );
-                return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/login.cgi?".$referer);
+                return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi?".$referer);
             }
         }
     }

@@ -7,3 +7,4 @@
  - $c->response->redirect  -> $c->redirect_to
  - $c->res->headers->content_type
  - $c->forward("View::JSON"); return $c->render(json => $json);
+ - $c->response->status()  -> $c->res->code()

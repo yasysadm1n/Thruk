@@ -318,7 +318,7 @@ sub _process_recurring_downtimes_page {
         Thruk::Utils::write_data_file($file, $rd);
         Thruk::Utils::RecurringDowntimes::update_cron_file($c);
         Thruk::Utils::set_message( $c, { style => 'success_message', msg => 'recurring downtime saved' });
-        return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/extinfo.cgi?type=6&recurring");
+        return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/extinfo.cgi?type=6&recurring");
     }
     if($task eq 'add' or $task eq 'edit') {
         return if _process_recurring_downtimes_page_edit($c, $nr, $default_rd);
@@ -337,7 +337,7 @@ sub _process_recurring_downtimes_page {
             Thruk::Utils::set_message( $c, { style => 'fail_message', msg => 'no such downtime!' });
         }
         Thruk::Utils::RecurringDowntimes::update_cron_file($c);
-        return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/extinfo.cgi?type=6&recurring");
+        return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/extinfo.cgi?type=6&recurring");
     }
 
     $c->stash->{'downtimes'} = Thruk::Utils::RecurringDowntimes::get_downtimes_list($c, 1, 1);

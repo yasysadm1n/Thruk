@@ -613,7 +613,7 @@ sub _do_parent_stuff {
 
     $c->stash->{'job_id'} = $id;
     if(!$conf->{'background'}) {
-        return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/job.cgi?job=".$id);
+        return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/job.cgi?job=".$id);
     }
     return $id;
 }
@@ -716,7 +716,7 @@ sub _finished_job_page {
 
         if(defined $forward) {
             $forward =~ s/^(http|https):\/\/.*?\//\//gmx;
-            return $c->response->redirect($forward);
+            return $c->redirect_to($forward);
         }
 
         if(defined $c->stash->{json}) {

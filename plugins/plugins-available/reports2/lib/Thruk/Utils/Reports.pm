@@ -77,7 +77,7 @@ sub report_show {
     my $report = _read_report_file($c, $nr);
     if(!defined $report) {
         Thruk::Utils::set_message( $c, 'fail_message', 'no such report' );
-        return $c->response->redirect('reports2.cgi');
+        return $c->redirect_to('reports2.cgi');
     }
 
     my $report_file = $c->config->{'tmp_path'}.'/reports/'.$nr.'.dat';
@@ -121,7 +121,7 @@ sub report_show {
         } else {
             Thruk::Utils::set_message( $c, 'fail_message', 'generating report failed' );
         }
-        return $c->response->redirect('reports2.cgi');
+        return $c->redirect_to('reports2.cgi');
     }
     return 1;
 }
@@ -140,13 +140,13 @@ sub report_send {
 
     if($c->config->{'demo_mode'}) {
         Thruk::Utils::set_message( $c, 'fail_message', 'sending mails disabled in demo mode');
-        return $c->response->redirect('reports2.cgi');
+        return $c->redirect_to('reports2.cgi');
     }
 
     my $report = _read_report_file($c, $nr);
     if(!defined $report) {
         Thruk::Utils::set_message( $c, 'fail_message', 'no such report' );
-        return $c->response->redirect('reports2.cgi');
+        return $c->redirect_to('reports2.cgi');
     }
     # make report available in template
     $report->{'desc'} = $desc if $to;
@@ -159,7 +159,7 @@ sub report_send {
         $attachment = $c->config->{'tmp_path'}.'/reports/'.$report->{'nr'}.'.dat';
         if(!-s $attachment) {
             Thruk::Utils::set_message( $c, 'fail_message', 'report not yet generated' );
-            return $c->response->redirect('reports2.cgi');
+            return $c->redirect_to('reports2.cgi');
         }
         _initialize_report_templates($c, $report);
     } else {

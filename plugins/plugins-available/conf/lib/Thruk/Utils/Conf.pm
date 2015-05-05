@@ -62,7 +62,7 @@ sub set_object_model {
     }
     # currently parsing
     elsif($jobid && Thruk::Utils::External::is_running($c, $jobid, 1)) {
-        $c->response->redirect("job.cgi?job=".$jobid);
+        $c->redirect_to("job.cgi?job=".$jobid);
         return 0;
     }
     else {

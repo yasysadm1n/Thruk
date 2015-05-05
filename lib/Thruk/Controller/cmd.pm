@@ -487,7 +487,7 @@ sub _redirect_or_success {
             return $c->render(json => $json);
         }
         else {
-            $c->response->redirect($referer);
+            $c->redirect_to($referer);
         }
     }
     else {

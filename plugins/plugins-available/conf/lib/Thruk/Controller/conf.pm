@@ -410,7 +410,7 @@ sub _process_cgi_page {
     if($c->stash->{action} eq 'store') {
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
-            return $c->response->redirect('conf.cgi?sub=cgi');
+            return $c->redirect_to('conf.cgi?sub=cgi');
         }
         return unless Thruk::Utils::check_csrf($c);
 
@@ -421,7 +421,7 @@ sub _process_cgi_page {
             $data->{$key} = [] unless defined $data->{$key};
         }
         _store_changes($c, $file, $data, $defaults);
-        return $c->response->redirect('conf.cgi?sub=cgi');
+        return $c->redirect_to('conf.cgi?sub=cgi');
     }
 
     my($content, $data, $md5) = Thruk::Utils::Conf::read_conf($file, $defaults);
@@ -502,7 +502,7 @@ sub _process_thruk_page {
     if($c->stash->{action} eq 'store') {
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
-            return $c->response->redirect('conf.cgi?sub=thruk');
+            return $c->redirect_to('conf.cgi?sub=thruk');
         }
         return unless Thruk::Utils::check_csrf($c);
 
@@ -510,7 +510,7 @@ sub _process_thruk_page {
         if(_store_changes($c, $file, $data, $defaults, $c)) {
             return Thruk::Utils::restart_later($c, $c->stash->{url_prefix}.'cgi-bin/conf.cgi?sub=thruk');
         } else {
-            return $c->response->redirect('conf.cgi?sub=thruk');
+            return $c->redirect_to('conf.cgi?sub=thruk');
         }
     }
 
@@ -608,12 +608,12 @@ sub _process_users_page {
         my $redirect = 'conf.cgi?action=change&sub=users&data.username='.$user;
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
-            return $c->response->redirect($redirect);
+            return $c->redirect_to($redirect);
         }
         my $msg = _update_password($c);
         if(defined $msg) {
             Thruk::Utils::set_message( $c, 'fail_message', $msg );
-            return $c->response->redirect($redirect);
+            return $c->redirect_to($redirect);
         }
 
         # save changes to cgi.cfg
@@ -636,7 +636,7 @@ sub _process_users_page {
         _store_changes($c, $file, $new_data, $defaults);
 
         Thruk::Utils::set_message( $c, 'success_message', 'User saved successfully' );
-        return $c->response->redirect($redirect);
+        return $c->redirect_to($redirect);
     }
 
     $c->stash->{'show_user'}  = 0;
@@ -726,7 +726,7 @@ sub _process_plugins_page {
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
             Thruk::Utils::set_message( $c, 'fail_message', "save is disabled in demo mode" );
-            return $c->response->redirect('conf.cgi?sub=plugins');
+            return $c->redirect_to('conf.cgi?sub=plugins');
         }
         if(! -d $plugin_enabled_dir or ! -w $plugin_enabled_dir ) {
             Thruk::Utils::set_message( $c, 'fail_message', 'Make sure plugins folder ('.$plugin_enabled_dir.') is writeable: '.$! );
@@ -796,11 +796,11 @@ sub _process_backends_page {
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
             Thruk::Utils::set_message( $c, 'fail_message', "save is disabled in demo mode" );
-            return $c->response->redirect('conf.cgi?sub=backends');
+            return $c->redirect_to('conf.cgi?sub=backends');
         }
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
-            return $c->response->redirect('conf.cgi?sub=backends');
+            return $c->redirect_to('conf.cgi?sub=backends');
         }
 
         my $x=0;
@@ -1119,7 +1119,7 @@ sub _apply_config_changes {
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
             Thruk::Utils::set_message( $c, 'fail_message', "save is disabled in demo mode" );
-            return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+            return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
         }
         if($c->{'obj_db'}->commit($c)) {
             # update changed files
@@ -1127,7 +1127,7 @@ sub _apply_config_changes {
             # set flag to do the reload
             $c->{'request'}->{'parameters'}->{'reload'} = 'yes';
         } else {
-            return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+            return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
         }
     }
 
@@ -1166,7 +1166,7 @@ sub _apply_config_changes {
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
             Thruk::Utils::set_message( $c, 'fail_message', "reload is disabled in demo mode" );
-            return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+            return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
         }
         if(defined $c->stash->{'peer_conftool'}->{'obj_reload_cmd'} or $c->{'db'}->get_peer_by_key($c->stash->{'param_backend'})->{'type'} ne 'configonly') {
             $c->stash->{'parse_errors'} = $c->{'obj_db'}->{'parse_errors'};
@@ -1186,12 +1186,12 @@ sub _apply_config_changes {
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
             Thruk::Utils::set_message( $c, 'fail_message', "save is disabled in demo mode" );
-            return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+            return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
         }
         if($c->{'obj_db'}->commit($c)) {
             Thruk::Utils::set_message( $c, 'success_message', 'Changes saved to disk successfully' );
         }
-        return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+        return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
     }
 
     # make nicer output
@@ -1204,7 +1204,7 @@ sub _apply_config_changes {
         return unless Thruk::Utils::check_csrf($c);
         $c->{'obj_db'}->discard_changes();
         Thruk::Utils::set_message( $c, 'success_message', 'Changes have been discarded' );
-        return $c->response->redirect('conf.cgi?sub=objects&apply=yes');
+        return $c->redirect_to('conf.cgi?sub=objects&apply=yes');
     }
     $c->stash->{'obj_model_changed'} = 0 unless ($c->{'request'}->{'parameters'}->{'refreshdata'} || $c->{'request'}->{'parameters'}->{'discard'});
     $c->stash->{'needs_commit'}      = $c->{'obj_db'}->{'needs_commit'};
@@ -1240,7 +1240,7 @@ sub _process_tools_page {
             Thruk::Utils::IO::json_lock_store($ignore_file, $ignores);
             Thruk::Utils::set_message( $c, 'success_message', "successfully reset ignores" );
         }
-        return $c->response->redirect('conf.cgi?sub=objects&tools='.$tool);
+        return $c->redirect_to('conf.cgi?sub=objects&tools='.$tool);
     }
     elsif(defined $tools->{$tool}) {
         if($c->{'request'}->{'parameters'}->{'ignore'}) {
@@ -1253,7 +1253,7 @@ sub _process_tools_page {
         if($c->{'request'}->{'parameters'}->{'cleanup'} && $c->{'request'}->{'parameters'}->{'ident'}) {
             $tools->{$tool}->cleanup($c, $c->{'request'}->{'parameters'}->{'ident'}, $ignores->{$tool});
             if($c->{'request'}->{'parameters'}->{'ident'} eq 'all') {
-                return $c->response->redirect('conf.cgi?sub=objects&tools='.$tool);
+                return $c->redirect_to('conf.cgi?sub=objects&tools='.$tool);
             }
             my $json = {'ok' => 1};
             return $c->render(json => $json);
@@ -1674,7 +1674,7 @@ sub _object_revert {
         }
     }
 
-    return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
+    return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
 }
 
 ##########################################################
@@ -1695,7 +1695,7 @@ sub _object_disable {
                                 $obj->get_name(),
     ));
 
-    return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
+    return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
 }
 
 ##########################################################
@@ -1716,7 +1716,7 @@ sub _object_enable {
                                 $obj->get_name(),
     ));
 
-    return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
+    return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
 }
 
 ##########################################################
@@ -1727,7 +1727,7 @@ sub _object_delete {
         my $refs = $c->{'obj_db'}->get_references($obj);
         if(scalar keys %{$refs}) {
             Thruk::Utils::set_message( $c, 'fail_message', ucfirst($obj->get_type()).' has remaining references' );
-            return $c->response->redirect('conf.cgi?sub=objects&action=listref&data.id='.$obj->get_id().'&show_force=1');
+            return $c->redirect_to('conf.cgi?sub=objects&action=listref&data.id='.$obj->get_id().'&show_force=1');
         }
     }
     $c->{'obj_db'}->delete_object($obj);
@@ -1741,7 +1741,7 @@ sub _object_delete {
     ));
 
     Thruk::Utils::set_message( $c, 'success_message', ucfirst($obj->get_type()).' removed successfully' );
-    return $c->response->redirect('conf.cgi?sub=objects&type='.$obj->get_type());
+    return $c->redirect_to('conf.cgi?sub=objects&type='.$obj->get_type());
 }
 
 ##########################################################
@@ -1775,7 +1775,7 @@ sub _object_save {
 
     # only save or continue to raw edit?
     if(defined $c->{'request'}->{'parameters'}->{'send'} and $c->{'request'}->{'parameters'}->{'send'} eq 'raw edit') {
-        return $c->response->redirect('conf.cgi?sub=objects&action=editor&file='.encode_utf8($obj->{'file'}->{'display'}).'&line='.$obj->{'line'}.'&data.id='.$obj->get_id().'&back=edit');
+        return $c->redirect_to('conf.cgi?sub=objects&action=editor&file='.encode_utf8($obj->{'file'}->{'display'}).'&line='.$obj->{'line'}.'&data.id='.$obj->get_id().'&back=edit');
     } else {
         if(scalar @{$obj->{'file'}->{'errors'}} > 0) {
             Thruk::Utils::set_message( $c, 'fail_message', ucfirst($c->stash->{'type'}).' changed with errors', $obj->{'file'}->{'errors'} );
@@ -1792,9 +1792,9 @@ sub _object_save {
             }
         }
         if($c->{'request'}->{'parameters'}->{'referer'}) {
-            return $c->response->redirect($c->{'request'}->{'parameters'}->{'referer'});
+            return $c->redirect_to($c->{'request'}->{'parameters'}->{'referer'});
         } else {
-            return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
+            return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
         }
     }
 
@@ -1823,7 +1823,7 @@ sub _object_move {
                                     $file->{'path'},
         )) unless $ENV{'THRUK_TEST_CONF_NO_LOG'};
 
-        return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
+        return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
     }
     elsif($c->stash->{action} eq 'move') {
         $c->stash->{'_template'} = 'conf_objects_move.tt';
@@ -1913,7 +1913,7 @@ sub _file_delete {
     }
 
     Thruk::Utils::set_message( $c, 'success_message', 'File(s) deleted successfully' );
-    return $c->response->redirect('conf.cgi?sub=objects&action=browser#'.$path);
+    return $c->redirect_to('conf.cgi?sub=objects&action=browser#'.$path);
 }
 
 
@@ -1933,7 +1933,7 @@ sub _file_undelete {
     }
 
     Thruk::Utils::set_message( $c, 'success_message', 'File(s) recoverd successfully' );
-    return $c->response->redirect('conf.cgi?sub=objects&action=browser#'.$path);
+    return $c->redirect_to('conf.cgi?sub=objects&action=browser#'.$path);
 }
 
 
@@ -1967,9 +1967,9 @@ sub _file_save {
     }
 
     if(defined $lastobj) {
-        return $c->response->redirect('conf.cgi?sub=objects&data.id='.$lastobj->get_id());
+        return $c->redirect_to('conf.cgi?sub=objects&data.id='.$lastobj->get_id());
     }
-    return $c->response->redirect('conf.cgi?sub=objects&action=browser#'.$file->{'display'});
+    return $c->redirect_to('conf.cgi?sub=objects&action=browser#'.$file->{'display'});
 }
 
 ##########################################################

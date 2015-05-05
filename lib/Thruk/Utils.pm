@@ -620,13 +620,10 @@ sub set_message {
         $code    = shift;
     }
 
-    $c->res->cookies->{'thruk_message'} = {
-        value => $style.'~~'.$message,
-        path  => $c->stash->{'cookie_path'}
-    };
+    $c->cookie('thruk_message' => $style.'~~'.$message, { path  => $c->stash->{'cookie_path'} });
     $c->stash->{'thruk_message'}         = $style.'~~'.$message;
     $c->stash->{'thruk_message_details'} = $details;
-    $c->response->status($code) if defined $code;
+    $c->res->code($code) if defined $code;
 
     return 1;
 }
@@ -1491,7 +1488,7 @@ sub choose_mobile {
     $c->stash->{'_template'} = 'mobile_choose.tt';
     $c->stash->{'redirect'}  = $url;
     if(defined $choose_mobile and $choose_mobile == 1) {
-        return $c->response->redirect($c->stash->{'redirect'});
+        return $c->redirect_to($c->stash->{'redirect'});
     }
     return 1;
 }
@@ -1764,10 +1761,10 @@ sub restart_later {
         my $pid = $$;
         system("sleep 1 && kill -HUP $pid &");
         Thruk::Utils::append_message($c, ' Thruk has been restarted.');
-        return $c->response->redirect($c->stash->{'url_prefix'}.'startup.html?wait#'.$redirect);
+        return $c->redirect_to($c->stash->{'url_prefix'}.'startup.html?wait#'.$redirect);
     } else {
         Thruk::Utils::append_message($c, ' Changes take effect after Restart.');
-        return $c->response->redirect($redirect);
+        return $c->redirect_to($redirect);
     }
     return;
 }

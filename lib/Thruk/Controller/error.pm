@@ -253,6 +253,7 @@ sub index {
     }
 
     # do not cache errors
+    $c->res->code($code);
     $c->res->headers->last_modified(time);
     $c->res->headers->expires(time - 3600);
     $c->res->headers->header(cache_control => "public, max-age=0");

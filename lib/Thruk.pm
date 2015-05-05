@@ -170,6 +170,7 @@ sub startup {
     $self->helper('user_exists'                 => sub { return(1) });
     $self->helper('user'                        => sub { return("thrukadmin"); });
     $self->helper('check_user_roles'            => sub { return(1) });
+    $self->helper('check_permissions'           => sub { return(1) });
     $self->helper('check_cmd_permissions'       => sub { return(1) });
     $self->helper('check_user_roles_wrapper'    => sub { return(1) });
 
@@ -185,7 +186,11 @@ sub startup {
         return($c);
     });
     $self->hook(before_render => sub {
-        my $c = $_[0];
+        my($c, $args) = @_;
+        if($args->{exception}) {
+            $c->error("".$args->{exception});
+            Thruk::Controller::error::index($c, 13);
+        }
         Thruk::Action::AddDefaults::end($c);
         return($c);
     });
@@ -441,6 +446,9 @@ sub _after_finalize {
         Thruk::Utils::External::log_profile($c);
     }
 
+    if($c->res->code() == 302) {
+        $c->res->body("This item has moved");
+    }
     Thruk::Utils::External::save_profile($c, $ENV{'THRUK_JOB_DIR'}) if $ENV{'THRUK_JOB_DIR'};
     return;
 };

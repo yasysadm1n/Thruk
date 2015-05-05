@@ -20,8 +20,8 @@ use URI::Escape;
 use Encode qw/decode_utf8/;
 use File::Slurp;
 use HTTP::Request::Common qw(POST);
-use HTTP::Cookies::Netscape;
 use HTTP::Response;
+use HTTP::Cookies::Netscape;
 use LWP::UserAgent;
 use File::Temp qw/ tempfile /;
 use HTML::Entities qw//;
@@ -49,16 +49,19 @@ eval {
 sub request {
     my($url) = @_;
     my $tx;
+    my $req;
     if(ref $url eq "") {
-        $tx   = $mojo->ua->build_tx(GET => $url);
+        $tx = $mojo->ua->build_tx(GET => $url);
+        $req = HTTP::Request->new(GET => $url);
     } else {
-        my $req = $url;
+        $req    = $url;
         my $url = "".$req->uri();
         $url    =~ s|^\Qhttp://localhost.local\E||gmx;
         $tx     = $mojo->ua->build_tx($req->method => $url);
     }
     my $test = $mojo->tx($mojo->ua->start($tx));
     my $res = HTTP::Response->parse($tx->res->to_string);
+    $res->request($req);
     return($res);
 }
 

@@ -395,7 +395,7 @@ sub _process_details_page {
             my $url = $c->stash->{'url_prefix'}.'cgi-bin/'.Thruk::Utils::Filter::uri_with($c, {'style' => 'hostdetail'});
             $url =~ s/&amp;/&/gmx;
             Thruk::Utils::set_message( $c, 'info_message', 'No services found for this filter, redirecting to host view.' );
-            return $c->response->redirect($url)
+            return $c->redirect_to($url)
         }
     }
 
@@ -1185,7 +1185,7 @@ sub _process_bookmarks {
         Thruk::Utils::set_message( $c, 'fail_message', 'nothing to do!' );
     }
 
-    return $c->response->redirect($referer."&reload_nav=1");
+    return $c->redirect_to($referer."&reload_nav=1");
 }
 
 

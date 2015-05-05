@@ -173,7 +173,7 @@ sub begin {
         # redirect to backends manager if admin user
         if( $c->config->{'use_feature_configtool'} ) {
             $c->{'request'}->{'parameters'}->{'sub'} = 'backends';
-            return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/conf.cgi?sub=backends");
+            return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/conf.cgi?sub=backends");
         } else {
             return $c->detach("/error/index/14");
         }
@@ -193,7 +193,7 @@ sub begin {
             and $c->config->{'use_frames'} == 1 ) {
         my $path = $c->request->uri->path_query;
         $path =~ s/nav=1//gmx;
-        return $c->response->redirect($c->stash->{'url_prefix'}."frame.html?link=".uri_escape($path));
+        return $c->redirect_to($c->stash->{'url_prefix'}."frame.html?link=".uri_escape($path));
     }
 
     # icon image path

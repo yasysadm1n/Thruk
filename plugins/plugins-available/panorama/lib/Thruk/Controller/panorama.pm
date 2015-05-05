@@ -232,7 +232,7 @@ sub index {
         my $data = Thruk::Utils::get_user_data($c);
         delete $data->{'panorama'};
         Thruk::Utils::store_user_data($c, $data);
-        return $c->response->redirect("panorama.cgi");
+        return $c->redirect_to("panorama.cgi");
     }
 
     _js($c, 1);
@@ -250,7 +250,7 @@ sub _js {
         my $dashboard = _get_dashboard_by_name($c, $c->request->parameters->{'map'});
         if(!$dashboard) {
             Thruk::Utils::set_message( $c, { style => 'fail_message', msg => 'no such dashboard', code => 404 });
-            return $c->response->redirect($c->stash->{'url_prefix'});
+            return $c->redirect_to($c->stash->{'url_prefix'});
         }
         $open_tabs = [$dashboard->{'nr'}];
         $c->stash->{one_tab_only} = $dashboard->{'nr'};
@@ -588,9 +588,9 @@ sub _task_redirect_status {
         $url    =~ s/\&amp;filter=.*?\&amp;/&amp;/gmx;
         $url    =~ s/\&amp;task=.*?\&amp;/&amp;/gmx;
         $url    =~ s/\&amp;/&/gmx;
-        return $c->response->redirect($url);
+        return $c->redirect_to($url);
     }
-    return $c->response->redirect("status.cgi");
+    return $c->redirect_to("status.cgi");
 }
 
 ##########################################################
