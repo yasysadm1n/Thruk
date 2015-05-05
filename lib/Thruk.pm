@@ -95,6 +95,7 @@ sub startup {
     # setup renderer
     $self->plugin('Thruk::ToolkitRenderer', {config => $config->{'View::TT'}});
     $self->plugin('Thruk::JSONRenderer', {});
+    $self->plugin('Thruk::ExcelRenderer', {config => $config->{'View::Excel::Template::Plus'}});
     $self->renderer->default_handler('tt');
 
     _init_logging($self, $config);

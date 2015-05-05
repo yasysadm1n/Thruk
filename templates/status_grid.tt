@@ -76,7 +76,7 @@
 
     <div align="center">
 
-      [% FOR g IN data %]
+      [% FOR g IN _data %]
       [% IF substyle == 'host' %]
       <div class='status'><a href='status.cgi?hostgroup=[% g.name | uri %]&amp;style=detail'>[% g.alias %]</a> (<a href='extinfo.cgi?type=5&amp;hostgroup=[% g.name | uri %]'>[% g.name %]</a>)</div>
       [% ELSIF substyle == 'service' %]

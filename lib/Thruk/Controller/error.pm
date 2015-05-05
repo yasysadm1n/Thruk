@@ -274,6 +274,8 @@ sub index {
         }
     }
 
+    # do not download errors
+    $c->res->headers->content_disposition('');
     $c->render_tt();
     return 1;
 }

@@ -82,7 +82,7 @@
           <th class='status'>Host Status Summary</th>
           <th class='status'>Service Status Summary</th>
         </tr>
-        [% FOR group IN data %]
+        [% FOR group IN _data %]
         [% groupname = group.name %]
 
         [% SET group_uri = groupname | uri %]

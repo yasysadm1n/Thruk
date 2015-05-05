@@ -2,7 +2,7 @@
 [% PROCESS _blocks.tt %]
 
 [% size = 1 %]
-[% IF data %][% size = _data.size + 1 %][% END %]
+[% IF _data %][% size = _data.size + 1 %][% END %]
 <workbook>
   <worksheet name='Log Events' autofilter='A1:[% last_col %][% size %]'>
     <row>

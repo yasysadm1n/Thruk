@@ -404,7 +404,7 @@ sub _process_details_page {
         $c->res->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
         $c->stash->{'_data'}     = $services;
         $c->stash->{'_template'} = 'excel/status_detail.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if ( $view_mode eq 'json' ) {
         # remove unwanted colums
@@ -486,10 +486,10 @@ sub _process_hostdetails_page {
     if( $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
         my $filename = 'status.xls';
-        $c->res->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
+        $c->res->headers->content_disposition(qq[attachment; filename="] . $filename . q["]);
         $c->stash->{'_data'}     = $hosts;
         $c->stash->{'_template'} = 'excel/status_hostdetail.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if ( $view_mode eq 'json' ) {
         # remove unwanted colums
@@ -966,7 +966,7 @@ sub _process_combined_page {
         $c->stash->{'hosts'}     = $hosts;
         $c->stash->{'services'}  = $services;
         $c->stash->{'_template'} = 'excel/status_combined.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if ( $view_mode eq 'json' ) {
         my $json = {
@@ -1040,7 +1040,7 @@ sub _process_perfmap_page {
         $c->stash->{'col_tr'}    = { 'host_name' => 'Hostname', 'description' => 'Service' };
         $c->stash->{'columns'}   = ['host_name', 'description', sort keys %{$keys}];
         $c->stash->{'_template'} = 'excel/generic.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if ( $view_mode eq 'json' ) {
         # remove unwanted colums

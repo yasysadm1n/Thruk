@@ -75,7 +75,7 @@
     <th class='status' nowrap>[% key %]&nbsp;<a href='[%  short_uri(c, ${"sorttype$sortprefix"} => 1, ${"sortoption$sortprefix"} => key) %]'><img src='[% url_prefix %]themes/[% theme %]/images/up.gif' border="0" alt='Sort by [% key %] (ascending)' title='Sort by [% key %] (ascending)'></a><a href='[%   short_uri(c, ${"sorttype$sortprefix"} => 2, ${"sortoption$sortprefix"} => key) %]'><img src='[% url_prefix %]themes/[% theme %]/images/down.gif' border="0" alt='Sort by [% key %] (descending)' title='Sort by [% key %] (descending)'></a></th>
     [% END %]
   </tr>
-  [% FOREACH s IN data %]
+  [% FOREACH s IN _data %]
     [% SET hostclass = 'statusOdd'  IF loop.even %]
     [% SET hostclass = 'statusEven' IF loop.odd %]
     [% IF s.host_state == 1 %]

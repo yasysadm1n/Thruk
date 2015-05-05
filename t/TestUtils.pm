@@ -12,16 +12,7 @@ BEGIN {
 }
 
 ###################################################
-# create connection pool
-# has to be done really early to save memory
 use lib 'lib';
-# TODO: ??
-#use Thruk::Backend::Pool;
-#BEGIN {
-#    Thruk::Backend::Pool::init_backend_thread_pool();
-#}
-
-###################################################
 use strict;
 use Data::Dumper;
 use Test::More;

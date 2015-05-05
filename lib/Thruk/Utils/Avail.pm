@@ -673,7 +673,7 @@ sub calculate_availability {
             Thruk::Utils::savexls($c);
         } else {
             $c->res->header( 'Content-Disposition', 'attachment; filename="'.$c->stash->{'file_name'}.'"' );
-            return $c->detach('View::Excel');
+            return $c->render_excel();
         }
     }
 

@@ -170,9 +170,9 @@ sub _process_comments_page {
 
     if( defined $view_mode and $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
-        $c->res->header( 'Content-Disposition', 'attachment; filename="comments.xls"' );
+        $c->res->headers->header( 'Content-Disposition', 'attachment; filename="comments.xls"' );
         $c->stash->{'_template'} = 'excel/comments.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if($view_mode eq 'json') {
         my $json = {
@@ -219,9 +219,9 @@ sub _process_downtimes_page {
 
     if( defined $view_mode and $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
-        $c->res->header( 'Content-Disposition', 'attachment; filename="downtimes.xls"' );
+        $c->res->headers->header( 'Content-Disposition', 'attachment; filename="downtimes.xls"' );
         $c->stash->{'_template'} = 'excel/downtimes.tt';
-        return $c->detach('View::Excel');
+        return $c->render_excel();
     }
     if($view_mode eq 'json') {
         my $json = {

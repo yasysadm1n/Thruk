@@ -15,7 +15,6 @@ BEGIN {
     import TestUtils;
 }
 
-use Catalyst::Test 'Thruk';
 use_ok('Thruk::Backend::Provider::Mysql');
 use_ok('Thruk::Config');
 use_ok('Thruk::Action::AddDefaults');

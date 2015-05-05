@@ -17,35 +17,10 @@ use Template ();
 
 =cut
 sub register {
-    my ( $self, $app, $settings ) = @_;
+    my($self, $app, $settings) = @_;
 
-    my $template = Template->new($settings->{'config'});
-
-    $settings->{'context'}->( $template->context ) if ( $settings->{'context'} );
-
-    $app->renderer->add_handler( 'tt' => sub {
-        #my($renderer, $controller, $output, $options) = @_;
-        if(!$_[1]->stash->{'_template'}) {
-            $app->renderer->default_handler('ep');
-            confess("no _template set!")
-        }
-        $template->context->{'LOAD_TEMPLATES'}->[0]->{'INCLUDE_PATH'} = [ @{$_[1]->stash->{'additional_template_paths'}}, $_[1]->config->{'View::TT'}->{'INCLUDE_PATH'}];
-
-# TODO: remove
-for my $forbidden (qw/action app cb controller data extends format handler json layout namespace path status template text variant/) {
-    delete $_[1]->stash->{$forbidden};
-}
-        $template->process(
-            $_[1]->stash->{'_template'},
-            { %{ $_[1]->stash }, c => $_[1] },
-            $_[2],
-        ) || do {
-            $_[1]->log->error($template->error);
-            $_[1]->error($template->error);
-            return($_[1]->detach("/error/index/13"));
-        };
-        return $_[2];
-    } );
+    our $template = Template->new($settings->{'config'});
+    $app->renderer->add_handler( 'tt' => \&render_tt);
 
     $app->helper(
         'render_tt' => sub {
@@ -54,6 +29,36 @@ for my $forbidden (qw/action app cb controller data extends format handler json 
     );
 
     return;
+}
+
+=head2 render_tt
+
+    do the rendering
+
+=cut
+sub render_tt {
+    #my($renderer, $controller, $output, $options) = @_;
+    our $template;
+    if(!$_[1]->stash->{'_template'}) {
+        $_[1]->app->renderer->default_handler('ep');
+        confess("no _template set!")
+    }
+    $template->context->{'LOAD_TEMPLATES'}->[0]->{'INCLUDE_PATH'} = [ @{$_[1]->stash->{'additional_template_paths'}}, $_[1]->config->{'View::TT'}->{'INCLUDE_PATH'}];
+
+# TODO: remove
+for my $forbidden (qw/action app cb controller data extends format handler json layout namespace path status template text variant/) {
+    delete $_[1]->stash->{$forbidden};
+}
+    $template->process(
+        $_[1]->stash->{'_template'},
+        { %{ $_[1]->stash }, c => $_[1] },
+        $_[2],
+    ) || do {
+        $_[1]->log->error($template->error);
+        $_[1]->error($template->error);
+        return($_[1]->detach("/error/index/13"));
+    };
+    return $_[2];
 }
 
 1;
