@@ -1,6 +1,6 @@
 ﻿[% USE date %]
 [% size = 1 %]
-[% IF data %][% size = data.size + 1 %][% END %]
+[% IF data %][% size = _data.size + 1 %][% END %]
 <workbook>
   <worksheet name='Notifications' autofilter='A1:[% last_col %][% size %]'>
     <row>
@@ -14,7 +14,7 @@
         [% IF columns.6  %]<cell width='60'>Information</cell>[% END %]
       </format>
     </row>
-    [% FOREACH n = data %]
+    [% FOREACH n = _data %]
     [% PROCESS _notifications_log_line.tt %]
     <row>
         [% IF columns.1  %]<cell>[% escape_xml(n.host_name) %]</cell>[% END %]

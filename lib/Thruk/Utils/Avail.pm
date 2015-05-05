@@ -58,44 +58,44 @@ sub calculate_availability {
 
     if(defined $hostgroup and $hostgroup ne '') {
         if($csvoutput) {
-            $c->stash->{template}   = 'avail_report_hosts_csv.tt';
+            $c->stash->{_template}   = 'avail_report_hosts_csv.tt';
         } else {
-            $c->stash->{template}   = 'avail_report_hostgroup.tt';
+            $c->stash->{_template}   = 'avail_report_hostgroup.tt';
         }
     }
     elsif(defined $service and $service ne 'all') {
         if($csvoutput) {
-            $c->stash->{template} = 'avail_report_services_csv.tt';
+            $c->stash->{_template} = 'avail_report_services_csv.tt';
         } else {
-            $c->stash->{template}   = 'avail_report_service.tt';
+            $c->stash->{_template}   = 'avail_report_service.tt';
         }
     }
     elsif((defined $service and $service eq 'all') || $c->{request}->{parameters}->{s_filter}) {
         if($csvoutput) {
-            $c->stash->{template} = 'avail_report_services_csv.tt';
+            $c->stash->{_template} = 'avail_report_services_csv.tt';
         } else {
-            $c->stash->{template} = 'avail_report_services.tt';
+            $c->stash->{_template} = 'avail_report_services.tt';
         }
     }
     elsif(defined $servicegroup and $servicegroup ne '') {
         if($csvoutput) {
-            $c->stash->{template} = 'avail_report_services_csv.tt';
+            $c->stash->{_template} = 'avail_report_services_csv.tt';
         } else {
-            $c->stash->{template}   = 'avail_report_servicegroup.tt';
+            $c->stash->{_template}   = 'avail_report_servicegroup.tt';
         }
     }
     elsif(defined $host and $host ne 'all') {
         if($csvoutput) {
-            $c->stash->{template}   = 'avail_report_hosts_csv.tt';
+            $c->stash->{_template}   = 'avail_report_hosts_csv.tt';
         } else {
-            $c->stash->{template}   = 'avail_report_host.tt';
+            $c->stash->{_template}   = 'avail_report_host.tt';
         }
     }
     elsif((defined $host and $host eq 'all') || $c->{request}->{parameters}->{h_filter}) {
         if($csvoutput) {
-            $c->stash->{template}   = 'avail_report_hosts_csv.tt';
+            $c->stash->{_template}   = 'avail_report_hosts_csv.tt';
         } else {
-            $c->stash->{template}   = 'avail_report_hosts.tt';
+            $c->stash->{_template}   = 'avail_report_hosts.tt';
         }
     }
     else {
@@ -661,12 +661,13 @@ sub calculate_availability {
 
     # json export
     if($view_mode eq 'json') {
+# TODO: check
         $c->stash->{'json'} = $return;
     }
     if( $view_mode eq 'xls' ) {
-        $c->stash->{'file_name'} = 'availability.xls';
-        $c->stash->{'name'}      = 'Availability';
-        $c->stash->{'template'}  = 'excel/availability.tt';
+        $c->stash->{'file_name'}  = 'availability.xls';
+        $c->stash->{'name'}       = 'Availability';
+        $c->stash->{'_template'}  = 'excel/availability.tt';
         if(defined $c->stash->{job_id}) {
             # store resulting xls in file, forked reports cannot handle detaches
             Thruk::Utils::savexls($c);

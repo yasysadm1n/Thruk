@@ -19,7 +19,7 @@
           <th class='status' nowrap>Status Information&nbsp;<a href='[% short_uri(c, ${"sorttype$sortprefix"} => 1, ${"sortoption$sortprefix"} => 9) %]'><img src='[% url_prefix %]themes/[% theme %]/images/up.gif' border="0" alt='Sort by status information (ascending)' title='Sort by status information (ascending)'></a><a href='[% short_uri(c, ${"sorttype$sortprefix"} => 2, ${"sortoption$sortprefix"} => 9) %]'><img src='[% url_prefix %]themes/[% theme %]/images/down.gif' border="0" alt='Sort by status information (descending)' title='Sort by status information (descending)'></a></th>
         </tr>
 
-        [%  FOREACH h = data %]
+        [%  FOREACH h = _data %]
         [% SET class = 'statusEven' IF loop.odd %]
         [% SET class = 'statusOdd'  IF loop.even %]
 

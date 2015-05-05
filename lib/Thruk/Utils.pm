@@ -1277,7 +1277,7 @@ sub savexls {
     Excel::Template::Plus->import();
     my $template = Excel::Template::Plus->new(
         engine   => 'TT',
-        template => $c->stash->{'template'},
+        template => $c->stash->{'_template'},
         config   => $c->config->{'View::TT'},
         params   => {},
     );
@@ -1486,10 +1486,10 @@ sub choose_mobile {
         return if $choose_mobile == 0;
     }
 
-    $c->{'canceled'}        = 1;
-    $c->stash->{'title'}    = $c->config->{'name'};
-    $c->stash->{'template'} = 'mobile_choose.tt';
-    $c->stash->{'redirect'} = $url;
+    $c->{'canceled'}         = 1;
+    $c->stash->{'title'}     = $c->config->{'name'};
+    $c->stash->{'_template'} = 'mobile_choose.tt';
+    $c->stash->{'redirect'}  = $url;
     if(defined $choose_mobile and $choose_mobile == 1) {
         return $c->response->redirect($c->stash->{'redirect'});
     }

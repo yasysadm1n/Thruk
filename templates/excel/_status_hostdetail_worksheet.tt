@@ -1,6 +1,6 @@
 ﻿[% USE date %]
 [% size = 1 %]
-[% IF data %][% size = data.size + 1 %][% END %]
+[% IF data %][% size = _data.size + 1 %][% END %]
   <worksheet name='[% name %]' autofilter='A1:[% last_col %][% size %]'>
     <row>
       <format bold='1' bg_color='silver' align='center'>
@@ -21,7 +21,7 @@
         [% IF columns.12 %]<cell width='80'>Extra Status Information</cell>[% END %]
       </format>
     </row>
-    [% FOREACH h = data %]
+    [% FOREACH h = _data %]
       [% SET peer_key      = h.peer_key %]
       [% SET program_start = pi_detail.$peer_key.program_start %]
 

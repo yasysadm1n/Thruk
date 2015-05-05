@@ -36,7 +36,7 @@
           <th class='queue'>Active Checks</th>
           <th class='queue'>Actions</th>
         </tr>
-        [%  FOREACH q = data %]
+        [%  FOREACH q = _data %]
         [% SET class = 'queueEven' IF loop.even %]
         [% SET class = 'queueOdd'  IF loop.odd %]
         <tr class='[% class %]'>

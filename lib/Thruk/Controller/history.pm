@@ -2,7 +2,7 @@ package Thruk::Controller::history;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -22,8 +22,10 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     my($start,$end);
     my $timeframe = 86400;
@@ -92,7 +94,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     push @{$filter}, { time => { '<=' => $end }};
 
     # type filter
-    my $typefilter = $self->_get_log_type_filter($type);
+    my $typefilter = _get_log_type_filter($type);
 
     # normal alerts
     my @prop_filter;
@@ -138,7 +140,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     }
 
     if( defined $c->{'request'}->{'parameters'}->{'view_mode'} and $c->{'request'}->{'parameters'}->{'view_mode'} eq 'xls' ) {
-        $c->stash->{'template'}   = 'excel/logs.tt';
+        $c->stash->{'_template'}  = 'excel/logs.tt';
         $c->stash->{'file_name'}  = 'history.xls';
         $c->stash->{'log_filter'} = { filter => [$total_filter, Thruk::Utils::Auth::get_auth_filter($c, 'log')],
                                       sort => {$order => 'time'},
@@ -167,7 +169,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     $c->stash->{service}          = $service || '';
     $c->stash->{title}            = 'History';
     $c->stash->{page}             = 'history';
-    $c->stash->{template}         = 'history.tt';
+    $c->stash->{_template}        = 'history.tt';
     $c->stash->{'no_auto_reload'} = 1;
 
     return 1;
@@ -175,7 +177,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 ##########################################################
 sub _get_log_type_filter {
-    my ( $self, $number ) = @_;
+    my ( $number ) = @_;
 
     $number = 0 if !defined $number or $number <= 0 or $number > 511;
     my @prop_filter;
@@ -223,7 +225,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

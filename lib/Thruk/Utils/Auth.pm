@@ -56,7 +56,7 @@ sub get_auth_filter {
         if(!$strict and $c->check_user_roles('authorized_for_all_hosts')) {
             return();
         }
-        return('contacts' => { '>=' => $c->user->get('username') });
+        return('contacts' => { '>=' => $c->user() });
     }
 
     # hostgroups authorization
@@ -69,11 +69,11 @@ sub get_auth_filter {
         if(!$strict and $c->check_user_roles('authorized_for_all_services')) {
             return();
         }
-        if(Thruk->config->{'use_strict_host_authorization'}) {
-            return('contacts' => { '>=' => $c->user->get('username') });
+        if($c->config->{'use_strict_host_authorization'}) {
+            return('contacts' => { '>=' => $c->user() });
         } else {
-            return('-or' => [ 'contacts'      => { '>=' => $c->user->get('username') },
-                              'host_contacts' => { '>=' => $c->user->get('username') }
+            return('-or' => [ 'contacts'      => { '>=' => $c->user() },
+                              'host_contacts' => { '>=' => $c->user() }
                             ]
                   );
         }
@@ -106,7 +106,7 @@ sub get_auth_filter {
         if($c->check_user_roles('authorized_for_all_services')) {
             push @filter, { 'service_description' => { '!=' => undef } };
         } else {
-            push @filter, '-and' => [ 'service_contacts'    => { '>=' => $c->user->get('username') },
+            push @filter, '-and' => [ 'service_contacts'    => { '>=' => $c->user() },
                                       'service_description' => { '!=' => undef }
                                     ];
         }
@@ -115,11 +115,11 @@ sub get_auth_filter {
             push @filter, { 'service_description' => undef };
         } else {
             if(Thruk->config->{'use_strict_host_authorization'}) {
-                push @filter, '-and ' => [ 'host_contacts'       => { '>=' => $c->user->get('username') },
+                push @filter, '-and ' => [ 'host_contacts'       => { '>=' => $c->user() },
                                            'service_description' => undef
                                          ];
             } else {
-                push @filter, { 'host_contacts' => { '>=' => $c->user->get('username') }};
+                push @filter, { 'host_contacts' => { '>=' => $c->user() }};
             }
         }
         return Thruk::Utils::combine_filter('-or', \@filter);
@@ -142,7 +142,7 @@ sub get_auth_filter {
         }
         else {
             push @filter, { '-and' => [
-                              'current_service_contacts' => { '>=' => $c->user->get('username') },
+                              'current_service_contacts' => { '>=' => $c->user() },
                               'service_description'      => { '!=' => undef },
                           ]}
         }
@@ -157,10 +157,10 @@ sub get_auth_filter {
         else {
             if(Thruk->config->{'use_strict_host_authorization'}) {
                 # only allowed for the host itself, not the services
-                push @filter, { -and => [ 'current_host_contacts' => { '>=' => $c->user->get('username') }, { 'service_description' => undef }]};
+                push @filter, { -and => [ 'current_host_contacts' => { '>=' => $c->user() }, { 'service_description' => undef }]};
             } else {
                 # allowed for all hosts and its services
-                push @filter, { 'current_host_contacts' => { '>=' => $c->user->get('username') } };
+                push @filter, { 'current_host_contacts' => { '>=' => $c->user() } };
             }
         }
 
@@ -177,7 +177,7 @@ sub get_auth_filter {
         if($c->check_user_roles('authorized_for_configuration_information')) {
             return();
         }
-        return('name' => { '>=' => $c->user->get('username') });
+        return('name' => { '>=' => $c->user() });
     }
 
     else {

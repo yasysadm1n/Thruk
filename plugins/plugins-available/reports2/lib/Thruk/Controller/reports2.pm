@@ -3,40 +3,52 @@ package Thruk::Controller::reports2;
 use strict;
 use warnings;
 use Module::Load qw/load/;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::reports2 - Catalyst Controller
+Thruk::Controller::reports2 - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
 =cut
 
-######################################
-# add new menu item
-Thruk::Utils::Menu::insert_item('Reports', {
-                                    'href'  => '/thruk/cgi-bin/reports2.cgi',
-                                    'name'  => 'Reporting',
-                         });
+##########################################################
 
-# enable reporting features if this plugin is loaded
-Thruk->config->{'use_feature_reports'} = 'reports2.cgi';
-
-######################################
-
-=head2 reports2_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/reports2.cgi
 
 =cut
-sub reports2_cgi : Path('/thruk/cgi-bin/reports2.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
+
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/reports2.cgi')->to(controller => 'Controller::reports2', action => 'index');
+
+    Thruk::Utils::Menu::insert_item('Reports', {
+                                    'href'  => '/thruk/cgi-bin/reports2.cgi',
+                                    'name'  => 'Reporting',
+    });
+
+    # enable reporting features if this plugin is loaded
+    $app->config->{'use_feature_reports'} = 'reports2.cgi';
+
+    return;
+}
+
+##########################################################
+
+=head2 index
+
+=cut
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
 
     if(!$c->config->{'reports2_modules_loaded'}) {
         load Carp, qw/confess carp/;
@@ -45,21 +57,10 @@ sub reports2_cgi : Path('/thruk/cgi-bin/reports2.cgi') {
         $c->config->{'reports2_modules_loaded'} = 1;
     }
 
-    return $c->detach('/reports2/index');
-}
-
-##########################################################
-
-=head2 index
-
-=cut
-sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
-    my ( $self, $c ) = @_;
-
     $c->stash->{'no_auto_reload'}      = 1;
     $c->stash->{title}                 = 'Reports';
     $c->stash->{page}                  = 'status'; # otherwise we would have to create a reports.css for every theme
-    $c->stash->{template}              = 'reports.tt';
+    $c->stash->{_template}             = 'reports.tt';
     $c->stash->{subtitle}              = 'Reports';
     $c->stash->{infoBoxTitle}          = 'Reporting';
     $c->stash->{has_jquery_ui}         = 1;
@@ -116,14 +117,15 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
             };
             @res = &{\&{$sub}}($c);
         };
+        my $json;
         if($@ or scalar @res == 0) {
-            $c->stash->{'json'}   = { 'hosts' => 0, 'services' => 0, 'error' => $@ };
+            $json        = { 'hosts' => 0, 'services' => 0, 'error' => $@ };
         } else {
             my $total    = $res[0] + $res[1];
             my $too_many = $total > $c->config->{'report_max_objects'} ? 1 : 0;
-            $c->stash->{'json'}   = { 'hosts' => $res[0], 'services' => $res[1], 'too_many' => $too_many };
+            $json        = { 'hosts' => $res[0], 'services' => $res[1], 'too_many' => $too_many };
         }
-        return $c->forward('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
     if(defined $report_nr) {
@@ -137,28 +139,28 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
             }
         }
         elsif($action eq 'edit') {
-            return $self->report_edit($c, $report_nr);
+            return report_edit($c, $report_nr);
         }
         elsif($action eq 'edit2') {
-            return $self->report_edit_step2($c, $report_nr);
+            return report_edit_step2($c, $report_nr);
         }
         elsif($action eq 'update') {
-            return $self->report_update($c, $report_nr);
+            return report_update($c, $report_nr);
         }
         elsif($action eq 'save') {
-            return $self->report_save($c, $report_nr);
+            return report_save($c, $report_nr);
         }
         elsif($action eq 'remove') {
-            return $self->report_remove($c, $report_nr);
+            return report_remove($c, $report_nr);
         }
         elsif($action eq 'cancel') {
-            return $self->report_cancel($c, $report_nr);
+            return report_cancel($c, $report_nr);
         }
         elsif($action eq 'email') {
-            return $self->report_email($c, $report_nr);
+            return report_email($c, $report_nr);
         }
         elsif($action eq 'profile') {
-            return $self->report_profile($c, $report_nr);
+            return report_profile($c, $report_nr);
         }
     }
 
@@ -183,7 +185,7 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
 
 =cut
 sub report_edit {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $r;
     $c->stash->{'params'} = {};
@@ -214,10 +216,10 @@ sub report_edit {
     }
 
     $c->stash->{templates} = Thruk::Utils::Reports::get_report_templates($c);
-    $self->_set_report_data($c, $r);
+    _set_report_data($c, $r);
 
     Thruk::Utils::ssi_include($c);
-    $c->stash->{template} = 'reports_edit.tt';
+    $c->stash->{_template} = 'reports_edit.tt';
     return;
 }
 
@@ -227,7 +229,7 @@ sub report_edit {
 
 =cut
 sub report_edit_step2 {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $r;
     if($report_nr eq 'new') {
@@ -243,9 +245,9 @@ sub report_edit_step2 {
     my $template     = $c->{'request'}->{'parameters'}->{'template'};
     $r->{'template'} = $template if defined $template;
 
-    $self->_set_report_data($c, $r);
+    _set_report_data($c, $r);
 
-    $c->stash->{template} = 'reports_edit_step2.tt';
+    $c->stash->{_template} = 'reports_edit_step2.tt';
     return;
 }
 
@@ -256,7 +258,7 @@ sub report_edit_step2 {
 
 =cut
 sub report_save {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     return unless Thruk::Utils::check_csrf($c);
 
@@ -288,7 +290,7 @@ sub report_save {
 
 =cut
 sub report_update {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $report = Thruk::Utils::Reports::_read_report_file($c, $report_nr);
     if($report) {
@@ -306,7 +308,7 @@ sub report_update {
 
 =cut
 sub report_remove {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     return unless Thruk::Utils::check_csrf($c);
 
@@ -324,7 +326,7 @@ sub report_remove {
 
 =cut
 sub report_cancel {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $report = Thruk::Utils::Reports::_read_report_file($c, $report_nr);
     if($report) {
@@ -351,7 +353,7 @@ sub report_cancel {
 
 =cut
 sub report_profile {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $data = '';
     my $report = Thruk::Utils::Reports::_read_report_file($c, $report_nr);
@@ -364,8 +366,8 @@ sub report_profile {
     } else {
         Thruk::Utils::set_message( $c, { style => 'fail_message', msg => 'no such report', code => 404 });
     }
-    $c->stash->{'json'} = { 'data' => $data };
-    return $c->forward('Thruk::View::JSON');
+    my $json = { 'data' => $data };
+    return $c->render(json => $json);
 }
 
 ##########################################################
@@ -374,7 +376,7 @@ sub report_profile {
 
 =cut
 sub report_email {
-    my($self, $c, $report_nr) = @_;
+    my($c, $report_nr) = @_;
 
     my $r = Thruk::Utils::Reports::_read_report_file($c, $report_nr);
     if(!defined $r) {
@@ -406,13 +408,13 @@ sub report_email {
     $c->stash->{r}       = $r;
 
     Thruk::Utils::ssi_include($c);
-    $c->stash->{template} = 'reports_email.tt';
+    $c->stash->{_template} = 'reports_email.tt';
     return;
 }
 
 ##########################################################
 sub _set_report_data {
-    my($self, $c, $r) = @_;
+    my($c, $r) = @_;
 
     $c->stash->{'t1'} = $r->{'params'}->{'t1'} || time() - 86400;
     $c->stash->{'t2'} = $r->{'params'}->{'t2'} || time();
@@ -440,7 +442,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

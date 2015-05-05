@@ -1,6 +1,6 @@
 ﻿[% USE date %]
 <div align="center" class='dataSubTitle'>
-  Displaying [% IF pager.total_entries > limit %] most recent [% limit %] of [% pager.total_entries %] [% ELSE %] all [% data.size %] [% END %]  matching alerts
+  Displaying [% IF pager.total_entries > limit %] most recent [% limit %] of [% pager.total_entries %] [% ELSE %] all [% _data.size %] [% END %]  matching alerts
   <div align="center">
     <table border="0" class='data'>
       <tr>
@@ -12,7 +12,7 @@
         <th class='data'>State Type</th>
         <th class='data'>Information</th>
       </tr>
-      [%  FOREACH d = data %]
+      [%  FOREACH d = _data %]
       [% SET class = 'dataOdd'  IF loop.even %]
       [% SET class = 'dataEven' IF loop.odd  %]
       <tr class='[% class %]'>

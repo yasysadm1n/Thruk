@@ -4,7 +4,7 @@
 
 [% SET  today = date_format(c, date.now, '%Y-%m-%d') %]
 [% SET last_day = '' %]
-[% FOREACH l = data %]
+[% FOREACH l = _data %]
 [% this_day = date_format(c, l.date, '%Y-%m-%d') %]
 [% IF this_day != last_day %]
     [% SET last_day = this_day %]

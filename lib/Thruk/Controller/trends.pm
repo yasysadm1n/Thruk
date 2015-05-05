@@ -2,7 +2,7 @@ package Thruk::Controller::trends;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -26,8 +26,10 @@ use constant {
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     require Thruk::Utils::Trends;
     Thruk::Utils::Trends->import();
@@ -61,7 +63,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
         # show report
     }
     else {
-        $c->stash->{'template'} = 'trends_step_1.tt';
+        $c->stash->{'_template'} = 'trends_step_1.tt';
     }
 
     return 1;
@@ -78,7 +80,5 @@ This library is free software. You can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

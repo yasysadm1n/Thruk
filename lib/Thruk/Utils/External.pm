@@ -322,7 +322,7 @@ sub get_json_status {
     return unless defined $time;
 
     $remaining = -1 unless defined $remaining;
-    $c->stash->{'json'}   = {
+    my $json   = {
             'is_running' => 0+$is_running,
             'time'       => 0+$time,
             'percent'    => 0+$percent,
@@ -331,7 +331,7 @@ sub get_json_status {
             'remaining'  => 0+$remaining,
     };
 
-    return $c->forward('Thruk::View::JSON');
+    return $c->render(json => $json);
 }
 
 
@@ -445,7 +445,7 @@ sub job_page {
         $c->stash->{infoBoxTitle}          = 'please stand by';
         $c->stash->{hide_backends_chooser} = 1;
         $c->stash->{'has_jquery_ui'}       = 1;
-        $c->stash->{template}              = 'waiting_for_job.tt';
+        $c->stash->{_template}             = 'waiting_for_job.tt';
     } else {
         # job finished, display result
         #my($out,$err,$time,$dir,$stash)...
@@ -720,13 +720,16 @@ sub _finished_job_page {
         }
 
         if(defined $c->stash->{json}) {
-            $c->forward('Thruk::View::JSON');
+# TODO: ??
+use Carp; confess("where does this json come from...");
+            return $c->render(json => {});
+            #return $c->render(json => $json);
         }
 
         return;
     }
-    $c->stash->{text}     = $out;
-    $c->stash->{template} = 'passthrough.tt';
+    $c->stash->{_text}     = $out;
+    $c->stash->{_template} = 'passthrough.tt';
     return;
 }
 

@@ -2,7 +2,7 @@
 [% PROCESS _blocks.tt %]
 
 [% size = 1 %]
-[% IF data %][% size = data.size + 1 %][% END %]
+[% IF data %][% size = _data.size + 1 %][% END %]
 <workbook>
   <worksheet name='Log Events' autofilter='A1:[% last_col %][% size %]'>
     <row>
@@ -16,7 +16,7 @@
         [% IF columns.7  %]<cell width='50'>Message</cell>[% END %]
       </format>
     </row>
-    [% FOREACH l = data %]
+    [% FOREACH l = _data %]
     [% PROCESS _logs_line %]
     [% IF has_type == 1 %]
       [% message = message.remove('^\s*' _ l.type _ ':\s*') %]

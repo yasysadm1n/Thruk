@@ -2,7 +2,7 @@ package Thruk::Controller::login;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -14,39 +14,24 @@ Catalyst Controller.
 
 =head1 METHODS
 
-=head2 login_cgi
-
-page: /thruk/cgi-bin/login.cgi
+=head2 index
 
 =cut
+sub index {
+    my ( $c ) = @_;
 
-sub login_cgi : Path('/thruk/cgi-bin/login.cgi') {
-    my( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
+    $c->stats->profile(begin => "login::index");
 
     if(!$c->config->{'login_modules_loaded'}) {
         require Thruk::Utils::CookieAuth;
         $c->config->{'login_modules_loaded'} = 1;
     }
 
-    return $c->detach('/login/index');
-}
-
-##########################################################
-
-=head2 index
-
-=cut
-sub index :Path :Args(0) {
-    my ( $self, $c ) = @_;
-
-    $c->stats->profile(begin => "login::index");
-
     $c->stash->{'no_auto_reload'} = 1;
     $c->stash->{'theme'}          = $c->config->{'default_theme'} unless defined $c->stash->{'theme'};
     $c->stash->{'page'}           = 'splashpage';
     $c->stash->{'loginurl'}       = $c->stash->{'url_prefix'}."cgi-bin/login.cgi";
-    $c->stash->{'template'}       = 'login.tt';
+    $c->stash->{'_template'}      = 'login.tt';
     my $product_prefix            = $c->config->{'product_prefix'};
 
     my $cookie_path = $c->stash->{'cookie_path'};
@@ -197,7 +182,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

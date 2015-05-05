@@ -2,15 +2,15 @@ package Thruk::Controller::extinfo;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::extinfo - Catalyst Controller
+Thruk::Controller::extinfo - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
@@ -21,8 +21,11 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index : Path : Args(0) : MyAction('AddDefaults') {
-    my( $self, $c ) = @_;
+sub index {
+    my( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
+
     my $type = $c->{'request'}->{'parameters'}->{'type'} || 0;
 
     if(!$c->config->{'extinfo_modules_loaded'}) {
@@ -32,50 +35,50 @@ sub index : Path : Args(0) : MyAction('AddDefaults') {
 
     $c->stash->{title}        = 'Extended Information';
     $c->stash->{page}         = 'extinfo';
-    $c->stash->{template}     = 'extinfo_type_' . $type . '.tt';
+    $c->stash->{_template}    = 'extinfo_type_' . $type . '.tt';
 
     my $infoBoxTitle;
     if( $type == 0 ) {
         $infoBoxTitle = 'Process Information';
         return $c->detach('/error/index/1') unless $c->check_user_roles("authorized_for_system_information");
-        $self->_process_process_info_page($c);
+        _process_process_info_page($c);
     }
     if( $type == 1 ) {
         $infoBoxTitle = 'Host Information';
-        return unless $self->_process_host_page($c);
+        return unless _process_host_page($c);
     }
     if( $type == 2 ) {
         $infoBoxTitle = 'Service Information';
-        return unless $self->_process_service_page($c);
+        return unless _process_service_page($c);
     }
     if( $type == 3 ) {
         $infoBoxTitle = 'All Host and Service Comments';
-        $self->_process_comments_page($c);
+        _process_comments_page($c);
     }
     if( $type == 4 ) {
         $infoBoxTitle = 'Performance Information';
-        $self->_process_perf_info_page($c);
+        _process_perf_info_page($c);
     }
     if( $type == 5 ) {
         $infoBoxTitle = 'Hostgroup Information';
-        $self->_process_hostgroup_cmd_page($c);
+        _process_hostgroup_cmd_page($c);
     }
     if( $type == 6 ) {
         if(exists $c->{'request'}->{'parameters'}->{'recurring'}) {
             $infoBoxTitle = 'Recurring Downtimes';
-            $self->_process_recurring_downtimes_page($c);
+            _process_recurring_downtimes_page($c);
         } else {
             $infoBoxTitle = 'All Host and Service Scheduled Downtime';
-            $self->_process_downtimes_page($c);
+            _process_downtimes_page($c);
         }
     }
     if( $type == 7 ) {
         $infoBoxTitle = 'Check Scheduling Queue';
-        $self->_process_scheduling_page($c);
+        _process_scheduling_page($c);
     }
     if( $type == 8 ) {
         $infoBoxTitle = 'Servicegroup Information';
-        $self->_process_servicegroup_cmd_page($c);
+        _process_servicegroup_cmd_page($c);
     }
 
     $c->stash->{infoBoxTitle} = $infoBoxTitle;
@@ -93,7 +96,7 @@ sub index : Path : Args(0) : MyAction('AddDefaults') {
 ##########################################################
 # get comment sort options
 sub _get_comment_sort_option {
-    my( $self, $option ) = @_;
+    my( $option ) = @_;
 
     my $sortoptions = {
         '1' => [ [ 'host_name',   'service_description' ], 'host name' ],
@@ -113,7 +116,7 @@ sub _get_comment_sort_option {
 ##########################################################
 # get downtime sort options
 sub _get_downtime_sort_option {
-    my( $self, $option ) = @_;
+    my( $option ) = @_;
 
     my $sortoptions = {
         '1' => [ [ 'host_name',   'service_description' ], 'host name' ],
@@ -135,7 +138,7 @@ sub _get_downtime_sort_option {
 ##########################################################
 # create the comments page
 sub _process_comments_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
 
     # services
@@ -143,8 +146,8 @@ sub _process_comments_page {
     my $svc_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_svc'} || 1;
     my $svc_order      = "ASC";
     $svc_order = "DESC" if $svc_sorttype == 2;
-    $svc_sortoption = 1 if !defined $self->_get_comment_sort_option($svc_sortoption);
-    $c->stash->{'svc_orderby'}    = $self->_get_comment_sort_option($svc_sortoption)->[1];
+    $svc_sortoption = 1 if !defined _get_comment_sort_option($svc_sortoption);
+    $c->stash->{'svc_orderby'}    = _get_comment_sort_option($svc_sortoption)->[1];
     $c->stash->{'svc_orderdir'}   = $svc_order;
     $c->stash->{'sortoption_svc'} = $c->{'request'}->{'parameters'}->{'sortoption_svc'} || '';
 
@@ -153,30 +156,30 @@ sub _process_comments_page {
     my $hst_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_hst'} || 1;
     my $hst_order      = "ASC";
     $hst_order = "DESC" if $hst_sorttype == 2;
-    $hst_sortoption = 1 if !defined $self->_get_comment_sort_option($hst_sortoption);
-    $c->stash->{'hst_orderby'}    = $self->_get_comment_sort_option($hst_sortoption)->[1];
+    $hst_sortoption = 1 if !defined _get_comment_sort_option($hst_sortoption);
+    $c->stash->{'hst_orderby'}    = _get_comment_sort_option($hst_sortoption)->[1];
     $c->stash->{'hst_orderdir'}   = $hst_order;
     $c->stash->{'sortoption_hst'} = $c->{'request'}->{'parameters'}->{'sortoption_hst'} || '';
 
     $c->stash->{'hostcomments'}    = $c->{'db'}->get_comments( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'comments' ), { 'service_description' => undef } ],
-                                                               sort   => { $hst_order => $self->_get_comment_sort_option($hst_sortoption)->[0] },
+                                                               sort   => { $hst_order => _get_comment_sort_option($hst_sortoption)->[0] },
                                                              );
     $c->stash->{'servicecomments'} = $c->{'db'}->get_comments( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'comments' ), { 'service_description' => { '!=' => undef } } ],
-                                                               sort   => { $svc_order => $self->_get_comment_sort_option($svc_sortoption)->[0] },
+                                                               sort   => { $svc_order => _get_comment_sort_option($svc_sortoption)->[0] },
                                                              );
 
     if( defined $view_mode and $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
         $c->res->header( 'Content-Disposition', 'attachment; filename="comments.xls"' );
-        $c->stash->{'template'} = 'excel/comments.tt';
+        $c->stash->{'_template'} = 'excel/comments.tt';
         return $c->detach('View::Excel');
     }
     if($view_mode eq 'json') {
-        $c->stash->{'json'} = {
+        my $json = {
             'host'    => $c->stash->{'hostcomments'},
             'service' => $c->stash->{'servicecomments'},
         };
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
     return 1;
 }
@@ -184,7 +187,7 @@ sub _process_comments_page {
 ##########################################################
 # create the downtimes page
 sub _process_downtimes_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
 
     # services
@@ -192,8 +195,8 @@ sub _process_downtimes_page {
     my $svc_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_svc'} || 1;
     my $svc_order      = "ASC";
     $svc_order = "DESC" if $svc_sorttype == 2;
-    $svc_sortoption = 1 if !defined $self->_get_downtime_sort_option($svc_sortoption);
-    $c->stash->{'svc_orderby'}    = $self->_get_downtime_sort_option($svc_sortoption)->[1];
+    $svc_sortoption = 1 if !defined _get_downtime_sort_option($svc_sortoption);
+    $c->stash->{'svc_orderby'}    = _get_downtime_sort_option($svc_sortoption)->[1];
     $c->stash->{'svc_orderdir'}   = $svc_order;
     $c->stash->{'sortoption_svc'} = $c->{'request'}->{'parameters'}->{'sortoption_svc'} || '';
 
@@ -202,30 +205,30 @@ sub _process_downtimes_page {
     my $hst_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_hst'} || 1;
     my $hst_order      = "ASC";
     $hst_order = "DESC" if $hst_sorttype == 2;
-    $hst_sortoption = 1 if !defined $self->_get_downtime_sort_option($hst_sortoption);
-    $c->stash->{'hst_orderby'}    = $self->_get_downtime_sort_option($hst_sortoption)->[1];
+    $hst_sortoption = 1 if !defined _get_downtime_sort_option($hst_sortoption);
+    $c->stash->{'hst_orderby'}    = _get_downtime_sort_option($hst_sortoption)->[1];
     $c->stash->{'hst_orderdir'}   = $hst_order;
     $c->stash->{'sortoption_hst'} = $c->{'request'}->{'parameters'}->{'sortoption_hst'} || '';
 
     $c->stash->{'hostdowntimes'}    = $c->{'db'}->get_downtimes( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'downtimes' ), { 'service_description' => undef } ],
-                                                                 sort   => { $hst_order => $self->_get_downtime_sort_option($hst_sortoption)->[0] },
+                                                                 sort   => { $hst_order => _get_downtime_sort_option($hst_sortoption)->[0] },
                                                                );
     $c->stash->{'servicedowntimes'} = $c->{'db'}->get_downtimes( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'downtimes' ), { 'service_description' => { '!=' => undef } } ],
-                                                                 sort   => { $svc_order => $self->_get_downtime_sort_option($svc_sortoption)->[0] },
+                                                                 sort   => { $svc_order => _get_downtime_sort_option($svc_sortoption)->[0] },
                                                                );
 
     if( defined $view_mode and $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
         $c->res->header( 'Content-Disposition', 'attachment; filename="downtimes.xls"' );
-        $c->stash->{'template'} = 'excel/downtimes.tt';
+        $c->stash->{'_template'} = 'excel/downtimes.tt';
         return $c->detach('View::Excel');
     }
     if($view_mode eq 'json') {
-        $c->stash->{'json'} = {
+        my $json = {
             'host'    => $c->stash->{'hostdowntimes'},
             'service' => $c->stash->{'servicedowntimes'},
         };
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
     return 1;
 }
@@ -233,7 +236,7 @@ sub _process_downtimes_page {
 ##########################################################
 # create the recurring downtimes page
 sub _process_recurring_downtimes_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $task   = $c->{'request'}->{'parameters'}->{'recurring'} || '';
     my $target = lc($c->{'request'}->{'parameters'}->{'target'} || 'service');
@@ -310,7 +313,7 @@ sub _process_recurring_downtimes_page {
                 }
             }
         }
-        return $self->_process_recurring_downtimes_page_edit($c, $nr, $default_rd, $rd) if $failed;
+        return _process_recurring_downtimes_page_edit($c, $nr, $default_rd, $rd) if $failed;
         my $file = $old_file || Thruk::Utils::RecurringDowntimes::get_data_file_name($c);
         Thruk::Utils::write_data_file($file, $rd);
         Thruk::Utils::RecurringDowntimes::update_cron_file($c);
@@ -318,7 +321,7 @@ sub _process_recurring_downtimes_page {
         return $c->response->redirect($c->stash->{'url_prefix'}."cgi-bin/extinfo.cgi?type=6&recurring");
     }
     if($task eq 'add' or $task eq 'edit') {
-        return if $self->_process_recurring_downtimes_page_edit($c, $nr, $default_rd);
+        return if _process_recurring_downtimes_page_edit($c, $nr, $default_rd);
     }
     elsif($task eq 'remove') {
         my $file = $c->config->{'var_path'}.'/downtimes/'.$nr.'.tsk';
@@ -338,13 +341,13 @@ sub _process_recurring_downtimes_page {
     }
 
     $c->stash->{'downtimes'} = Thruk::Utils::RecurringDowntimes::get_downtimes_list($c, 1, 1);
-    $c->stash->{template}    = 'extinfo_type_6_recurring.tt';
+    $c->stash->{_template}   = 'extinfo_type_6_recurring.tt';
     return 1;
 }
 
 ##########################################################
 sub _process_recurring_downtimes_page_edit {
-    my($self, $c, $nr, $default_rd, $rd) = @_;
+    my($c, $nr, $default_rd, $rd) = @_;
     $c->stash->{'has_jquery_ui'} = 1;
 
     $c->stash->{rd}->{'file'} = '';
@@ -376,14 +379,14 @@ sub _process_recurring_downtimes_page_edit {
             $c->stash->{rd}->{$key} = $rd->{$key};
         }
     }
-    $c->stash->{template} = 'extinfo_type_6_recurring_edit.tt';
+    $c->stash->{_template} = 'extinfo_type_6_recurring_edit.tt';
     return 1;
 }
 
 ##########################################################
 # create the host info page
 sub _process_host_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
     my $host;
 
     my $backend = $c->{'request'}->{'parameters'}->{'backend'} || '';
@@ -413,7 +416,7 @@ sub _process_host_page {
     for my $h ( @{$hosts} ) {
         push @backends, $h->{'peer_key'};
     }
-    $self->_set_backend_selector( $c, \@backends, $host->{'peer_key'} );
+    _set_backend_selector( $c, \@backends, $host->{'peer_key'} );
 
     $c->stash->{'host'} = $host;
 
@@ -422,28 +425,28 @@ sub _process_host_page {
     my $cmt_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_cmt'} || 3;
     my $cmt_order      = "ASC";
     $cmt_order = "DESC" if $cmt_sorttype == 2;
-    $cmt_sortoption = 1 if !defined $self->_get_comment_sort_option($cmt_sortoption);
-    $c->stash->{'cmt_orderby'}    = $self->_get_comment_sort_option($cmt_sortoption)->[1];
+    $cmt_sortoption = 1 if !defined _get_comment_sort_option($cmt_sortoption);
+    $c->stash->{'cmt_orderby'}    = _get_comment_sort_option($cmt_sortoption)->[1];
     $c->stash->{'cmt_orderdir'}   = $cmt_order;
     $c->stash->{'sortoption_cmt'} = $c->{'request'}->{'parameters'}->{'sortoption_cmt'} || '';
 
     $c->stash->{'comments'}  = $c->{'db'}->get_comments(
         filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'comments' ), { 'host_name' => $hostname }, { 'service_description' => undef } ],
-        sort => { $cmt_order => $self->_get_comment_sort_option($cmt_sortoption)->[0] } );
+        sort => { $cmt_order => _get_comment_sort_option($cmt_sortoption)->[0] } );
 
     # downtimes
     my $dtm_sorttype   = $c->{'request'}->{'parameters'}->{'sorttype_dtm'}   || 2;
     my $dtm_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_dtm'} || 3;
     my $dtm_order      = "ASC";
     $dtm_order = "DESC" if $dtm_sorttype == 2;
-    $dtm_sortoption = 1 if !defined $self->_get_comment_sort_option($dtm_sortoption);
-    $c->stash->{'dtm_orderby'}    = $self->_get_comment_sort_option($dtm_sortoption)->[1];
+    $dtm_sortoption = 1 if !defined _get_comment_sort_option($dtm_sortoption);
+    $c->stash->{'dtm_orderby'}    = _get_comment_sort_option($dtm_sortoption)->[1];
     $c->stash->{'dtm_orderdir'}   = $dtm_order;
     $c->stash->{'sortoption_dtm'} = $c->{'request'}->{'parameters'}->{'sortoption_dtm'} || '';
 
     $c->stash->{'downtimes'} = $c->{'db'}->get_downtimes(
         filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'downtimes' ), { 'host_name' => $hostname }, { 'service_description' => undef } ],
-        sort => { $dtm_order => $self->_get_comment_sort_option($dtm_sortoption)->[0] } );
+        sort => { $dtm_order => _get_comment_sort_option($dtm_sortoption)->[0] } );
 
     # shinken only
     $c->stash->{'show_impacts_link'}      = 0;
@@ -493,7 +496,7 @@ sub _process_host_page {
 ##########################################################
 # create the hostgroup cmd page
 sub _process_hostgroup_cmd_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $hostgroup = $c->{'request'}->{'parameters'}->{'hostgroup'};
     return $c->detach('/error/index/5') unless defined $hostgroup;
@@ -508,7 +511,7 @@ sub _process_hostgroup_cmd_page {
 ##########################################################
 # create the service info page
 sub _process_service_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
     my $service;
     my $backend = $c->{'request'}->{'parameters'}->{'backend'} || '';
 
@@ -543,7 +546,7 @@ sub _process_service_page {
     for my $s ( @{$services} ) {
         push @backends, $s->{'peer_key'};
     }
-    $self->_set_backend_selector( $c, \@backends, $service->{'peer_key'} );
+    _set_backend_selector( $c, \@backends, $service->{'peer_key'} );
 
     $c->stash->{'service'} = $service;
 
@@ -552,28 +555,28 @@ sub _process_service_page {
     my $cmt_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_cmt'} || 3;
     my $cmt_order      = "ASC";
     $cmt_order = "DESC" if $cmt_sorttype == 2;
-    $cmt_sortoption = 1 if !defined $self->_get_comment_sort_option($cmt_sortoption);
-    $c->stash->{'cmt_orderby'}    = $self->_get_comment_sort_option($cmt_sortoption)->[1];
+    $cmt_sortoption = 1 if !defined _get_comment_sort_option($cmt_sortoption);
+    $c->stash->{'cmt_orderby'}    = _get_comment_sort_option($cmt_sortoption)->[1];
     $c->stash->{'cmt_orderdir'}   = $cmt_order;
     $c->stash->{'sortoption_cmt'} = $c->{'request'}->{'parameters'}->{'sortoption_cmt'} || '';
 
     $c->stash->{'comments'} = $c->{'db'}->get_comments(
         filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'comments' ), { 'host_name' => $hostname }, { 'service_description' => $servicename } ],
-        sort => { $cmt_order => $self->_get_comment_sort_option($cmt_sortoption)->[0] } );
+        sort => { $cmt_order => _get_comment_sort_option($cmt_sortoption)->[0] } );
 
     # downtimes
     my $dtm_sorttype   = $c->{'request'}->{'parameters'}->{'sorttype_dtm'}   || 2;
     my $dtm_sortoption = $c->{'request'}->{'parameters'}->{'sortoption_dtm'} || 3;
     my $dtm_order      = "ASC";
     $dtm_order = "DESC" if $dtm_sorttype == 2;
-    $dtm_sortoption = 1 if !defined $self->_get_comment_sort_option($dtm_sortoption);
-    $c->stash->{'dtm_orderby'}    = $self->_get_comment_sort_option($dtm_sortoption)->[1];
+    $dtm_sortoption = 1 if !defined _get_comment_sort_option($dtm_sortoption);
+    $c->stash->{'dtm_orderby'}    = _get_comment_sort_option($dtm_sortoption)->[1];
     $c->stash->{'dtm_orderdir'}   = $dtm_order;
     $c->stash->{'sortoption_dtm'} = $c->{'request'}->{'parameters'}->{'sortoption_dtm'} || '';
 
     $c->stash->{'downtimes'} = $c->{'db'}->get_downtimes(
         filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'downtimes' ), { 'host_name' => $hostname }, { 'service_description' => $servicename } ],
-        sort => { $dtm_order => $self->_get_comment_sort_option($dtm_sortoption)->[0] } );
+        sort => { $dtm_order => _get_comment_sort_option($dtm_sortoption)->[0] } );
 
     # shinken only
     $c->stash->{'show_impacts_link'}      = 0;
@@ -622,7 +625,7 @@ sub _process_service_page {
 ##########################################################
 # create the servicegroup cmd page
 sub _process_servicegroup_cmd_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $servicegroup = $c->{'request'}->{'parameters'}->{'servicegroup'};
     return $c->detach('/error/index/5') unless defined $servicegroup;
@@ -639,7 +642,7 @@ sub _process_servicegroup_cmd_page {
 ##########################################################
 # create the scheduling page
 sub _process_scheduling_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $sorttype   = $c->{'request'}->{'parameters'}->{'sorttype'}   || 1;
     my $sortoption = $c->{'request'}->{'parameters'}->{'sortoption'} || 7;
@@ -666,7 +669,7 @@ sub _process_scheduling_page {
 ##########################################################
 # create the process info page
 sub _process_process_info_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     return $c->detach('/error/index/1') unless $c->check_user_roles("authorized_for_system_information");
     return 1;
@@ -675,7 +678,7 @@ sub _process_process_info_page {
 ##########################################################
 # create the performance info page
 sub _process_perf_info_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     # apache statistics
     $c->stash->{'apache_status'} = [];
@@ -689,7 +692,7 @@ sub _process_perf_info_page {
 
         if($apache and $c->config->{'apache_status'}->{$apache}) {
             _apache_status($c, $apache, $c->config->{'apache_status'}->{$apache});
-            $c->stash->{template} = 'extinfo_type_4_apache_status.tt';
+            $c->stash->{_template} = 'extinfo_type_4_apache_status.tt';
             return 1;
         }
     }
@@ -717,7 +720,7 @@ sub _process_perf_info_page {
 ##########################################################
 # show backend selector
 sub _set_backend_selector {
-    my( $self, $c, $backends, $selected ) = @_;
+    my( $c, $backends, $selected ) = @_;
     my %backends = map { $_ => 1 } @{$backends};
 
     my @backends;
@@ -773,7 +776,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

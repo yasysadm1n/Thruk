@@ -34,7 +34,6 @@ inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
-inc/Module/Install/Catalyst.pm
 inc/Module/Install/Fetch.pm
 inc/Module/Install/Include.pm
 inc/Module/Install/Makefile.pm
@@ -42,28 +41,17 @@ inc/Module/Install/Metadata.pm
 inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
-lib/Catalyst/Authentication/Credential/Thruk.pm
-lib/Catalyst/Authentication/Store/FromCGIConf.pm
-lib/Catalyst/Helper/Model/Thruk/Class.pm
-lib/Catalyst/Model/Thruk/Class.pm
-lib/Catalyst/Plugin/Authorization/ThrukRoles.pm
-lib/Catalyst/Plugin/Thruk/ConfigLoader.pm
-lib/Catalyst/Plugin/Thruk/RemoveNastyCharsFromHttpParam.pm
-lib/Catalyst/Plugin/Unicode/Encoding.pm
-lib/Catalyst/Script/Thrukembedded.pm
-lib/Catalyst/View/GD.pm
 lib/FCGI/ProcManager/MaxRequestsThruk.pm
+lib/Mojolicious/Plugin/Thruk/JSONRenderer.pm
+lib/Mojolicious/Plugin/Thruk/ToolkitRenderer.pm
 lib/Monitoring/Availability.pm
 lib/Monitoring/Availability/Logs.pm
 lib/Monitoring/Livestatus.pm
 lib/Monitoring/Livestatus/Class/Lite.pm
 lib/Monitoring/Livestatus/INET.pm
 lib/Monitoring/Livestatus/UNIX.pm
-lib/Plack/Handler/Thrukembedded.pm
 lib/Thruk.pm
-lib/Thruk/Action/AddCachedDefaults.pm
 lib/Thruk/Action/AddDefaults.pm
-lib/Thruk/Action/AddSafeDefaults.pm
 lib/Thruk/Backend/Manager.pm
 lib/Thruk/Backend/Peer.pm
 lib/Thruk/Backend/Pool.pm
@@ -74,12 +62,12 @@ lib/Thruk/Backend/Provider/Livestatus.pm
 lib/Thruk/Backend/Provider/Mongodb.pm
 lib/Thruk/Backend/Provider/Mysql.pm
 lib/Thruk/Config.pm
+lib/Thruk/ConfigLoader.pm
 lib/Thruk/Controller/avail.pm
 lib/Thruk/Controller/cmd.pm
 lib/Thruk/Controller/config.pm
 lib/Thruk/Controller/error.pm
 lib/Thruk/Controller/extinfo.pm
-lib/Thruk/Controller/histogram.pm
 lib/Thruk/Controller/history.pm
 lib/Thruk/Controller/login.pm
 lib/Thruk/Controller/notifications.pm
@@ -93,8 +81,10 @@ lib/Thruk/Controller/summary.pm
 lib/Thruk/Controller/tac.pm
 lib/Thruk/Controller/test.pm
 lib/Thruk/Controller/trends.pm
-lib/Thruk/Model/Thruk.pm
 lib/Thruk/Pool/Simple.pm
+lib/Thruk/Request.pm
+lib/Thruk/Request/Cookie.pm
+lib/Thruk/Stats.pm
 lib/Thruk/Template/Context.pm
 lib/Thruk/Timer.pm
 lib/Thruk/UserAgent.pm
@@ -106,7 +96,6 @@ lib/Thruk/Utils/CLI.pm
 lib/Thruk/Utils/CookieAuth.pm
 lib/Thruk/Utils/External.pm
 lib/Thruk/Utils/Filter.pm
-lib/Thruk/Utils/INC.pm
 lib/Thruk/Utils/IO.pm
 lib/Thruk/Utils/Livecache.pm
 lib/Thruk/Utils/Log.pm
@@ -116,10 +105,6 @@ lib/Thruk/Utils/Scripts.pm
 lib/Thruk/Utils/SelfCheck.pm
 lib/Thruk/Utils/Status.pm
 lib/Thruk/Utils/Trends.pm
-lib/Thruk/View/Excel.pm
-lib/Thruk/View/GD.pm
-lib/Thruk/View/JSON.pm
-lib/Thruk/View/TT.pm
 LICENSE
 log4perl.conf.example
 Makefile.PL
@@ -156,7 +141,6 @@ plugins/plugins-available/business_process/templates/bp.tt
 plugins/plugins-available/business_process/templates/bp_details.tt
 plugins/plugins-available/business_process/templates/reports/sla_business_process.tt
 plugins/plugins-available/conf/description.txt
-plugins/plugins-available/conf/lib/Catalyst/Model/Objects/Class.pm
 plugins/plugins-available/conf/lib/Monitoring/Config.pm
 plugins/plugins-available/conf/lib/Monitoring/Config/File.pm
 plugins/plugins-available/conf/lib/Monitoring/Config/Help.pm
@@ -193,7 +177,6 @@ plugins/plugins-available/conf/lib/Monitoring/Config/Object/Serviceextinfo.pm
 plugins/plugins-available/conf/lib/Monitoring/Config/Object/Servicegroup.pm
 plugins/plugins-available/conf/lib/Monitoring/Config/Object/Timeperiod.pm
 plugins/plugins-available/conf/lib/Thruk/Controller/conf.pm
-plugins/plugins-available/conf/lib/Thruk/Model/Objects.pm
 plugins/plugins-available/conf/lib/Thruk/Utils/Conf.pm
 plugins/plugins-available/conf/lib/Thruk/Utils/Conf/Defaults.pm
 plugins/plugins-available/conf/lib/Thruk/Utils/Conf/Tools/CombineIdenticalServices.pm
@@ -1237,7 +1220,6 @@ t/087-trailing_whitespace.t
 t/088-remove_after.t
 t/089-patches.t
 t/090-io.t
-t/091-moose.t
 t/092-clean_debug.t
 t/092-stash-config.t
 t/092-thruk-view-json.t
@@ -1721,7 +1703,6 @@ themes/themes-available/Classic/stylesheets/cmd.css
 themes/themes-available/Classic/stylesheets/common.css
 themes/themes-available/Classic/stylesheets/config.css
 themes/themes-available/Classic/stylesheets/extinfo.css
-themes/themes-available/Classic/stylesheets/histogram.css
 themes/themes-available/Classic/stylesheets/history.css
 themes/themes-available/Classic/stylesheets/ministatus.css
 themes/themes-available/Classic/stylesheets/notifications.css
@@ -1889,7 +1870,6 @@ themes/themes-available/Exfoliation/stylesheets/common.css
 themes/themes-available/Exfoliation/stylesheets/config.css
 themes/themes-available/Exfoliation/stylesheets/Exfoliation.css
 themes/themes-available/Exfoliation/stylesheets/extinfo.css
-themes/themes-available/Exfoliation/stylesheets/histogram.css
 themes/themes-available/Exfoliation/stylesheets/history.css
 themes/themes-available/Exfoliation/stylesheets/ministatus.css
 themes/themes-available/Exfoliation/stylesheets/notifications.css
@@ -1911,7 +1891,6 @@ themes/themes-available/Neat/stylesheets/cmd.css
 themes/themes-available/Neat/stylesheets/common.css
 themes/themes-available/Neat/stylesheets/config.css
 themes/themes-available/Neat/stylesheets/extinfo.css
-themes/themes-available/Neat/stylesheets/histogram.css
 themes/themes-available/Neat/stylesheets/history.css
 themes/themes-available/Neat/stylesheets/images/gradShortVertGray.png
 themes/themes-available/Neat/stylesheets/images/gradShortVertGreen.png
@@ -2141,7 +2120,6 @@ themes/themes-available/Nuvola/stylesheets/cmd.css
 themes/themes-available/Nuvola/stylesheets/common.css
 themes/themes-available/Nuvola/stylesheets/config.css
 themes/themes-available/Nuvola/stylesheets/extinfo.css
-themes/themes-available/Nuvola/stylesheets/histogram.css
 themes/themes-available/Nuvola/stylesheets/history.css
 themes/themes-available/Nuvola/stylesheets/ministatus.css
 themes/themes-available/Nuvola/stylesheets/notifications.css
@@ -2466,7 +2444,6 @@ themes/themes-available/Vautour/stylesheets/cmd.css
 themes/themes-available/Vautour/stylesheets/common.css
 themes/themes-available/Vautour/stylesheets/config.css
 themes/themes-available/Vautour/stylesheets/extinfo.css
-themes/themes-available/Vautour/stylesheets/histogram.css
 themes/themes-available/Vautour/stylesheets/history.css
 themes/themes-available/Vautour/stylesheets/interface/common.css
 themes/themes-available/Vautour/stylesheets/interface/menu.css
@@ -2721,7 +2698,6 @@ themes/themes-available/Wakizashi/stylesheets/cmd.css
 themes/themes-available/Wakizashi/stylesheets/common.css
 themes/themes-available/Wakizashi/stylesheets/config.css
 themes/themes-available/Wakizashi/stylesheets/extinfo.css
-themes/themes-available/Wakizashi/stylesheets/histogram.css
 themes/themes-available/Wakizashi/stylesheets/history.css
 themes/themes-available/Wakizashi/stylesheets/ministatus.css
 themes/themes-available/Wakizashi/stylesheets/notifications.css

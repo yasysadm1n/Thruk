@@ -65,7 +65,7 @@ sub _show_step_2 {
 
     $c->stash->{input}       = $input;
     $c->stash->{data}        = $data;
-    $c->stash->{template}    = 'trends_step_2.tt';
+    $c->stash->{_template}   = 'trends_step_2.tt';
 
     return 1;
 }
@@ -95,7 +95,7 @@ sub _show_step_3 {
     $c->stash->{service}     = $service || '';
     $c->stash->{timeperiods} = $c->{'db'}->get_timeperiods(filter => [Thruk::Utils::Auth::get_auth_filter($c, 'timeperiods')], remove_duplicates => 1);
 
-    $c->stash->{template}    = 'trends_step_3.tt';
+    $c->stash->{_template}   = 'trends_step_3.tt';
 
     return 1;
 }
@@ -156,7 +156,7 @@ sub _do_report {
         $c->stash->{image_height} = '320';
     }
 
-    $c->stash->{template}    = 'trends_report.tt';
+    $c->stash->{_template}   = 'trends_report.tt';
 
     return 1;
 }

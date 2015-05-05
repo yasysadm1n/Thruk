@@ -1,6 +1,6 @@
 ﻿[% USE date %]
 [% size = 1 %]
-[% IF data %][% size = data.size + 1 %][% END %]
+[% IF data %][% size = _data.size + 1 %][% END %]
   <worksheet name='[% name %]' autofilter='A1:[% last_col %][% size %]'>
     <row>
       <format bold='1' bg_color='silver' align='center'>
@@ -15,7 +15,7 @@
         [% IF columns.9  %]<cell width='20'>Expires</cell>[% END %]
       </format>
     </row>
-    [% FOREACH d = data %]
+    [% FOREACH d = _data %]
       <row>
         [% IF columns.1  %]<cell>[% escape_xml(d.host_name) %]</cell>[% END %]
         [% IF columns.2  %]<cell>[% escape_xml(d.service_description) %]</cell>[% END %]

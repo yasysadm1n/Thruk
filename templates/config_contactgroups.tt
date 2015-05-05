@@ -11,7 +11,7 @@
     <th class='data'>Description</th>
     <th class='data'>Contact Member</th>
   </tr>
-  [% FOREACH d = data %]
+  [% FOREACH d = _data %]
   [% SET class = 'dataOdd'  IF loop.odd %]
   [% SET class = 'dataEven' IF loop.even %]
   [% SET class = 'tableRowHover' IF jump == d.name %]

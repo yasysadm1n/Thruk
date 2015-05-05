@@ -14,12 +14,6 @@ BEGIN {
 }
 
 ###################################################
-# clean up env
-use Thruk::Utils::INC;
-BEGIN {
-    Thruk::Utils::INC::clean();
-}
-
 require Catalyst::ScriptRunner;
 Catalyst::ScriptRunner->import();
 Catalyst::ScriptRunner->run('Thruk', 'FastCGI');

@@ -20,7 +20,7 @@
             </th>
         </tr>
         [% FOREACH key = cat.1 %]
-        [% d = data.$key %]
+        [% d = _data.$key %]
         <tr>
           <td class='dataVar' align="left" valign="top">[% key %]</td>
           <td class='dataVal'>

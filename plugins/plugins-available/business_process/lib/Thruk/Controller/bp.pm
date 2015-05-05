@@ -2,49 +2,43 @@ package Thruk::Controller::bp;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::bp - Catalyst Controller
+Thruk::Controller::bp - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
 =cut
 
-######################################
-# add new menu item, but only if user has all of the
-# requested roles
-Thruk::Utils::Menu::insert_item('Reports', {
-                                    'href'  => '/thruk/cgi-bin/bp.cgi',
-                                    'name'  => 'Business Process',
-                         });
+##########################################################
 
-# enable business process features if this plugin is loaded
-Thruk->config->{'use_feature_bp'} = 1;
-
-######################################
-
-=head2 bp_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/bp.cgi
 
 =cut
-sub bp_cgi : Path('/thruk/cgi-bin/bp.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
 
-    if(!$c->config->{'bp_modules_loaded'}) {
-        require Data::Dumper;
-        require Thruk::BP::Utils;
-        $c->config->{'bp_modules_loaded'} = 1;
-    }
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/bp.cgi')->to(controller => 'Controller::bp', action => 'index');
 
-    return $c->detach('/bp/index');
+    # add new menu item, but only if user has all of the
+    # requested roles
+    Thruk::Utils::Menu::insert_item('Reports', {
+                                    'href'  => '/thruk/cgi-bin/bp.cgi',
+                                    'name'  => 'Business Process',
+    });
+
+    # enable business process features if this plugin is loaded
+    $app->config->{'use_feature_bp'} = 1;
+
+    return;
 }
 
 ##########################################################
@@ -52,12 +46,20 @@ sub bp_cgi : Path('/thruk/cgi-bin/bp.cgi') {
 =head2 index
 
 =cut
-sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
+
+    if(!$c->config->{'bp_modules_loaded'}) {
+        require Data::Dumper;
+        require Thruk::BP::Utils;
+        $c->config->{'bp_modules_loaded'} = 1;
+    }
 
     $c->stash->{title}                 = 'Business Process';
     $c->stash->{page}                  = 'status';
-    $c->stash->{template}              = 'bp.tt';
+    $c->stash->{_template}             = 'bp.tt';
     $c->stash->{subtitle}              = 'Business Process';
     $c->stash->{infoBoxTitle}          = 'Business Process';
     $c->stash->{'has_jquery_ui'}       = 1;
@@ -109,8 +111,7 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
                 }
             }
             my $json = [ { 'name' => "host templates", 'data' => $host_templates }, { 'name' => "service templates", 'data' => $service_templates } ];
-            $c->stash->{'json'} = $json;
-            return $c->forward('Thruk::View::JSON');
+            return $c->render(json => $json);
         }
     }
 
@@ -120,7 +121,7 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
         my $bps = Thruk::BP::Utils::load_bp_data($c, $id, $c->stash->{editmode});
         if(scalar @{$bps} != 1) {
             Thruk::Utils::set_message( $c, { style => 'fail_message', msg => 'no such business process', code => 404 });
-            return $self->_bp_start_page($c);
+            return _bp_start_page($c);
         }
         my $bp = $bps->[0];
         $c->stash->{'bp'} = $bp;
@@ -178,8 +179,8 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
         }
         elsif($action eq 'rename_node' and $nodeid) {
             if(!$bp->{'nodes_by_id'}->{$nodeid}) {
-                $c->stash->{'json'} = { rc => 1, 'message' => 'ERROR: no such node' };
-                return $c->forward('Thruk::View::JSON');
+                my $json = { rc => 1, 'message' => 'ERROR: no such node' };
+                return $c->render(json => $json);
             }
             my $label = Thruk::BP::Utils::clean_nasty($c->{'request'}->{'parameters'}->{'label'} || 'none');
             # first node renames business process itself too
@@ -189,26 +190,26 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
             }
             $bp->{'nodes_by_id'}->{$nodeid}->{'label'} = $label;
             $bp->save($c);
-            $c->stash->{'json'} = { rc => 0, 'message' => 'OK' };
-            return $c->forward('Thruk::View::JSON');
+            my $json = { rc => 0, 'message' => 'OK' };
+            return $c->render(json => $json);
         }
         elsif($action eq 'remove_node' and $nodeid) {
             if(!$bp->{'nodes_by_id'}->{$nodeid}) {
-                $c->stash->{'json'} = { rc => 1, 'message' => 'ERROR: no such node' };
-                return $c->forward('Thruk::View::JSON');
+                my $json = { rc => 1, 'message' => 'ERROR: no such node' };
+                return $c->render(json => $json);
             }
             $bp->remove_node($nodeid);
             $bp->save($c);
             $bp->update_status($c, 1);
-            $c->stash->{'json'} = { rc => 0, 'message' => 'OK' };
-            return $c->forward('Thruk::View::JSON');
+            my $json = { rc => 0, 'message' => 'OK' };
+            return $c->render(json => $json);
         }
         elsif($action eq 'edit_node' and $nodeid) {
             my $type = lc($c->{'request'}->{'parameters'}->{'bp_function'} || '');
             my $node = $bp->get_node($nodeid); # node from the 'node' parameter
             if(!$node) {
-                $c->stash->{'json'} = { rc => 1, 'message' => 'ERROR: no such node' };
-                return $c->forward('Thruk::View::JSON');
+                my $json = { rc => 1, 'message' => 'ERROR: no such node' };
+                return $c->render(json => $json);
             }
 
             my @arg;
@@ -268,8 +269,8 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
 
             $bp->save($c);
             $bp->update_status($c, 1);
-            $c->stash->{'json'} = { rc => 0, 'message' => 'OK' };
-            return $c->forward('Thruk::View::JSON');
+            my $json = { rc => 0, 'message' => 'OK' };
+            return $c->render(json => $json);
         }
     }
 
@@ -303,7 +304,7 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
         my $bps = Thruk::BP::Utils::load_bp_data($c, $id, $c->stash->{editmode});
         if(scalar @{$bps} != 1) {
             Thruk::Utils::set_message( $c, { style => 'fail_message', msg => 'no such business process', code => 404 });
-            return $self->_bp_start_page($c);
+            return _bp_start_page($c);
         }
         my $bp = $bps->[0];
         $c->stash->{'bp'} = $bp;
@@ -322,11 +323,11 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
 
         if($action eq 'details') {
             if($c->{'request'}->{'parameters'}->{'view_mode'} and $c->{'request'}->{'parameters'}->{'view_mode'} eq 'json') {
-                $c->stash->{'json'} = { $bp->{'id'} => $bp->TO_JSON() };
-                return $c->forward('Thruk::View::JSON');
+                my $json = { $bp->{'id'} => $bp->TO_JSON() };
+                return $c->render(json => $json);
             }
             $c->stash->{'auto_reload_fn'} = 'bp_refresh_bg';
-            $c->stash->{'template'}       = 'bp_details.tt';
+            $c->stash->{'_template'}      = 'bp_details.tt';
             return 1;
         }
         elsif($action eq 'refresh') {
@@ -344,22 +345,22 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
                 $c->stash->{testmodes} = $testmodes;
                 $bp->update_status($c, 1); # only recalculate
             }
-            $c->stash->{template} = '_bp_graph.tt';
+            $c->stash->{_template} = '_bp_graph.tt';
             return 1;
         }
     }
 
-    $self->_bp_start_page($c);
+    _bp_start_page($c);
 
     return 1;
 }
 
 ##########################################################
 sub _bp_start_page {
-    my($self, $c) = @_;
+    my($c) = @_;
 
-    $c->stash->{template} = 'bp.tt';
-    $c->stash->{editmode} = 0;
+    $c->stash->{_template} = 'bp.tt';
+    $c->stash->{editmode}  = 0;
 
     # load business processes
     my $drafts_too = $c->stash->{allowed_for_edit} ? 1 : 0;
@@ -370,20 +371,21 @@ sub _bp_start_page {
     $c->stash->{'bps'} = $bps;
 
     if($c->{'request'}->{'parameters'}->{'view_mode'} and $c->{'request'}->{'parameters'}->{'view_mode'} eq 'json') {
+        my $json;
         if($c->{'request'}->{'parameters'}->{'format'} and $c->{'request'}->{'parameters'}->{'format'} eq 'search') {
             my $data = [];
             for my $bp (@{$bps}) {
                 push @{$data}, $bp->{'name'};
             }
-            $c->stash->{'json'} = [ { 'name' => "business processs", 'data' => $data } ];
+            $json = [ { 'name' => "business processs", 'data' => $data } ];
         } else {
             my $data = {};
             for my $bp (@{$bps}) {
                 $data->{$bp->{'id'}} = $bp->TO_JSON();
             }
-            $c->stash->{'json'} = $data;
+            $json = $data;
         }
-        return $c->forward('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
 
@@ -404,7 +406,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

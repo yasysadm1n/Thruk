@@ -2,44 +2,47 @@ package Thruk::Controller::mobile;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::mobile - Catalyst Controller
+Thruk::Mojolicious::mobile - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
 =cut
 
-# enable mobile features if this plugin is loaded
-Thruk->config->{'use_feature_mobile'} = 1;
+##########################################################
 
-######################################
-
-=head2 mobile_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/mobile.cgi
 
 =cut
-sub mobile_cgi : Path('/thruk/cgi-bin/mobile.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    return $c->detach('/mobile/index');
-}
 
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/mobile.cgi')->to(controller => 'Controller::mobile', action => 'index');
+
+    # enable mobile features if this plugin is loaded
+    $app->config->{'use_feature_mobile'} = 1;
+
+    return;
+}
 
 ##########################################################
 
 =head2 index
 
 =cut
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     if(defined $c->{'request'}->{'parameters'}->{'data'}) {
         my $type   = $c->{'request'}->{'parameters'}->{'data'};
@@ -93,7 +96,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
             $data = $c->{'db'}->get_service_stats(filter => [ Thruk::Utils::Auth::get_auth_filter($c, 'services')]);
         }
         elsif($type eq 'hosts') {
-            my ($hostfilter, $servicefilter) = $self->_extract_filter_from_param($c);
+            my ($hostfilter, $servicefilter) = _extract_filter_from_param($c);
             if(defined $c->{'request'}->{'parameters'}->{'host'}) {
                 $hostfilter = { 'name' => $c->{'request'}->{'parameters'}->{'host'} };
                 $comments   = $c->{'db'}->get_comments(
@@ -109,7 +112,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
             }
         }
         elsif($type eq 'services') {
-            my ($hostfilter, $servicefilter) = $self->_extract_filter_from_param($c);
+            my ($hostfilter, $servicefilter) = _extract_filter_from_param($c);
             if(defined $c->{'request'}->{'parameters'}->{'host'}) {
                 $servicefilter = { 'description' => $c->{'request'}->{'parameters'}->{'service'},
                                    'host_name'   => $c->{'request'}->{'parameters'}->{'host'} };
@@ -126,39 +129,39 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
             }
         }
         if(defined $data) {
-            $c->stash->{'json'} = {};
+            my $json = {};
             if(ref $data eq 'ARRAY') {
                 $data = $c->stash->{'data'} if defined $c->stash->{'data'};
+# TODO: check
                 $c->stash->{'json'}->{'more'} = 1 if($page < ($c->stash->{'pages'} || 1));
             }
-            $c->stash->{'json'}->{'data'} = $data;
+            $json->{'data'} = $data;
             my $program_starts = {};
             if(defined $c->stash->{'pi_detail'} and ref $c->stash->{'pi_detail'} eq 'HASH') {
                 for my $key (keys %{$c->stash->{'pi_detail'}}) {
                     $program_starts->{$key} = $c->stash->{'pi_detail'}->{$key}->{'program_start'};
                 }
             }
-            $c->stash->{'json'}->{program_starts}    = $program_starts;
-            $c->stash->{'json'}->{connection_status} = $connection_status;
-            $c->stash->{'json'}->{downtimes}         = $downtimes if defined $downtimes;
-            $c->stash->{'json'}->{comments}          = $comments  if defined $comments;
-            $c->stash->{'json'}->{pnp_url}           = $pnp_url   if defined $pnp_url;
-            $c->forward('Thruk::View::JSON');
-            return;
+            $json->{program_starts}    = $program_starts;
+            $json->{connection_status} = $connection_status;
+            $json->{downtimes}         = $downtimes if defined $downtimes;
+            $json->{comments}          = $comments  if defined $comments;
+            $json->{pnp_url}           = $pnp_url   if defined $pnp_url;
+            return $c->render(json => $json);
         } else {
             $c->log->error("unknown type: ".$type);
             return;
         }
     }
 
-    $c->stash->{template}  = 'mobile.tt';
+    $c->stash->{_template} = 'mobile.tt';
 
     return 1;
 }
 
 ##########################################################
 sub _extract_filter_from_param {
-    my($self,$c) = @_;
+    my($c) = @_;
     my( $search, $hostfilter, $servicefilter, $hostgroupfilter, $servicegroupfilter ) = Thruk::Utils::Status::classic_filter($c);
     return($hostfilter, $servicefilter);
 }
@@ -173,7 +176,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

@@ -68,7 +68,7 @@
         <th class='data'>Poller Tag</th>
     [% END %]
   </tr>
-  [% FOREACH d = data %]
+  [% FOREACH d = _data %]
   [% SET pd = d.peer_key %]
   [% SET class = 'dataOdd'  IF loop.even %]
   [% SET class = 'dataEven' IF loop.odd %]

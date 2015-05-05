@@ -10,68 +10,47 @@ use lib 'lib';
 BEGIN {
     $ENV{'THRUK_SRC'} = 'DebugServer';
     # won't work with automatical restarts
-    unless(grep {/^\-r/} @ARGV) {
+    if(!grep {/^\-r/} @ARGV) {
         require Thruk::Backend::Pool;
         Thruk::Backend::Pool::init_backend_thread_pool()
+    } else {
+        @ARGV = grep {!/^\-r/} @ARGV;
+        push @ARGV, '-w', 'lib';
+        for my $plugin (glob('plugins/plugins-enabled/*/lib')) {
+            push @ARGV, '-w', $plugin;
+        }
+        push @ARGV, '-w', 'script/';
+        push @ARGV, '-w', 'thruk_local.conf';
+        push @ARGV, '-w', 'thruk.conf';
+        exec("morbo", $0, @ARGV) or die("cannot run $0 with morbo: $!");
+        exit;
     }
-    push @ARGV, '--follow_symlinks';
-    push @ARGV, '--restart_directory=./lib';
-    push @ARGV, '--restart_directory=./plugins/plugins-enabled';
 }
 
 ###################################################
-# clean up env
-use Thruk::Utils::INC;
-BEGIN {
-    Thruk::Utils::INC::clean();
-}
-
-use Catalyst::ScriptRunner;
-Catalyst::ScriptRunner->run('Thruk', 'Server');
-
-1;
+require Mojolicious::Commands;
+Mojolicious::Commands->start_app('Thruk', 'daemon');
 
 =head1 NAME
 
-thruk_server.pl - Catalyst Test Server
+thruk_server.pl - Thruk Development Server
 
 =head1 SYNOPSIS
 
 thruk_server.pl [options]
 
    -d --debug           force debug mode
-   -f --fork            handle each request in a new process
-                        (defaults to false)
    -? --help            display this help and exits
-   -h --host            host (defaults to all)
-   -p --port            port (defaults to 3000)
-   -k --keepalive       enable keep-alive connections
    -r --restart         restart when files get modified
-                        (defaults to false)
-   -rd --restart_delay  delay between file checks
-                        (ignored if you have Linux::Inotify2 installed)
-   -rr --restart_regex  regex match files that trigger
-                        a restart when modified
-                        (defaults to '\.yml$|\.yaml$|\.conf|\.pm$')
-   --restart_directory  the directory to search for
-                        modified files, can be set mulitple times
-                        (defaults to '[SCRIPT_DIR]/..')
    --follow_symlinks    follow symlinks in search directories
-                        (defaults to false. this is a no-op on Win32)
-   --background         run the process in the background
-   --pidfile            specify filename for pid file
-
- See also:
-   perldoc Catalyst::Manual
-   perldoc Catalyst::Manual::Intro
 
 =head1 DESCRIPTION
 
-Run a Catalyst Testserver for this application.
+Run a Thruk Testserver.
 
 =head1 AUTHORS
 
-Catalyst Contributors, see Catalyst.pm
+Sven Nierlein, 2009-2014, <sven@nierlein.org>
 
 =head1 COPYRIGHT
 

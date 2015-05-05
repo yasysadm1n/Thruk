@@ -26,11 +26,11 @@
         min:   0.5,
         max:   [% data.values.size + 0.5 %],
         [% IF param.breakdown == 'months' %]
-          ticks: [ [% FOREACH m = data.keys %][[%loop.index+1%] , '[% get_month_name(m.1, monthNames) %]'][% UNLESS loop.last %],[% END %][% END %] ]
+          ticks: [ [% FOREACH m = _data.keys %][[%loop.index+1%] , '[% get_month_name(m.1, monthNames) %]'][% UNLESS loop.last %],[% END %][% END %] ]
         [% ELSIF param.breakdown == 'weeks' %]
-          ticks: [ [% FOREACH m = data.keys %][[%loop.index+1%] , '[% get_week_name(m.1, weekAbbr) %]'][% UNLESS loop.last %],[% END %][% END %] ]
+          ticks: [ [% FOREACH m = _data.keys %][[%loop.index+1%] , '[% get_week_name(m.1, weekAbbr) %]'][% UNLESS loop.last %],[% END %][% END %] ]
         [% ELSIF param.breakdown == 'days' %]
-          ticks: [ [% FOREACH m = data.keys %][[%loop.index+1%] , '[% get_day_name(m.1, monthNames) %]'][% UNLESS loop.last %],[% END %][% END %] ]
+          ticks: [ [% FOREACH m = _data.keys %][[%loop.index+1%] , '[% get_day_name(m.1, monthNames) %]'][% UNLESS loop.last %],[% END %][% END %] ]
         [% END %]
       },
       yaxis: {

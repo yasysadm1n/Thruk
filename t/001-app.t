@@ -9,8 +9,6 @@ BEGIN {
     import TestUtils;
 }
 
-use Catalyst::Test 'Thruk';
-
 my $request = request('/thruk/side.html');
 ok( $request->is_success, 'Request /thruk/side.html should succeed' ) or TestUtils::bail_out_req('request should succeed', $request);
 

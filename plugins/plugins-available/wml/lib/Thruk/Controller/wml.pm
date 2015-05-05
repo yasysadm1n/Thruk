@@ -4,44 +4,46 @@ use strict;
 use warnings;
 use Carp;
 use Data::Dumper;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::wml - Catalyst Controller
+Thruk::Controller::wml - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
 =cut
 
-# enable wml features if this plugin is loaded
-Thruk->config->{'use_feature_wml'} = 1;
+##########################################################
 
-######################################
-
-=head2 wml_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/statuswml.cgi
 
 =cut
-sub wml_cgi : Path('/thruk/cgi-bin/statuswml.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    return $c->detach('/wml/index');
-}
 
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/statuswml.cgi')->to(controller => 'Controller::statuswml', action => 'index');
+
+    $app->config->{'use_feature_wml'} = 1;
+
+    return;
+}
 
 ##########################################################
 
 =head2 index
 
 =cut
-sub index :Path :Args(0) :MyAction('AddDefaults') {
+sub index {
     my ( $self, $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     my $style='uprobs';
     my $hostfilter = [ { 'state'=> { '>' => 0 } }, {'has_been_checked' => 1}, {'acknowledged' => 0}, {'scheduled_downtime_depth' => 0} ];
@@ -56,9 +58,9 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     }
     my $services = $c->{'db'}->get_services(filter => [ Thruk::Utils::Auth::get_auth_filter($c, 'services'), $servicefilter ]);
     my $hosts = $c->{'db'}->get_hosts(filter => [ Thruk::Utils::Auth::get_auth_filter($c, 'hosts'), $hostfilter ]);
-    $c->stash->{services}	= $services;
-    $c->stash->{hosts}    	= $hosts;
-    $c->stash->{template}	= 'wml.tt';
+    $c->stash->{services}  = $services;
+    $c->stash->{hosts}     = $hosts;
+    $c->stash->{_template} = 'wml.tt';
 
     return 1;
 }
@@ -75,7 +77,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

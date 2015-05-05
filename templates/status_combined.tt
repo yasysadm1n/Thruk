@@ -81,7 +81,7 @@
 </table>
 [% END %]
 
-[% PROCESS _status_hostdetail_table.tt data=hosts paneprefix='hst_' sortprefix='_hst' %]
+[% PROCESS _status_hostdetail_table.tt _data=hosts paneprefix='hst_' sortprefix='_hst' %]
 <div class='itemTotalsTitle'>[% hosts.size %] of [% hosts.size %] Matching Host Entries Displayed</div>
 <br>
 
@@ -118,7 +118,7 @@
 </div>
 [% END %]
 [% END %]
-[% PROCESS _status_detail_table.tt  data=services paneprefix='svc_' sortprefix='_svc' %]
+[% PROCESS _status_detail_table.tt  _data=services paneprefix='svc_' sortprefix='_svc' %]
 <div class='itemTotalsTitle'>[% services.size %] of [% services.size %] Matching Service Entries Displayed</div>
 
 </form>

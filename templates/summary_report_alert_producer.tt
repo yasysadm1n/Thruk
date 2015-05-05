@@ -1,5 +1,5 @@
 ﻿<div align="center" class='dataSubTitle'>
-  Displaying [% IF pager.total_entries > limit %] first [% limit %] of [% pager.total_entries %] [% ELSE %] all [% data.size %] [% END %] matching alert producers
+  Displaying [% IF pager.total_entries > limit %] first [% limit %] of [% pager.total_entries %] [% ELSE %] all [% _data.size %] [% END %] matching alert producers
   <div align="center">
     <table border="0" class='data'>
       <tr>
@@ -9,7 +9,7 @@
         <th class='data'>Service</th>
         <th class='data'>Total Alerts</th>
       </tr>
-      [%  FOREACH d = data %]
+      [%  FOREACH d = _data %]
       [% SET class = 'dataOdd'  IF loop.even %]
       [% SET class = 'dataEven' IF loop.odd %]
       <tr class='dataEven'>

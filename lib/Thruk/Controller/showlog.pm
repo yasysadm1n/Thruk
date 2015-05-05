@@ -2,7 +2,7 @@ package Thruk::Controller::showlog;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -14,16 +14,15 @@ Catalyst Controller.
 
 =head1 METHODS
 
-=cut
-
-
 =head2 index
 
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
 
     my($start,$end);
     my $filter;
@@ -120,9 +119,9 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
     }
 
     if( defined $c->{'request'}->{'parameters'}->{'view_mode'} and $c->{'request'}->{'parameters'}->{'view_mode'} eq 'xls' ) {
-        $c->stash->{'template'}   = 'excel/logs.tt';
-        $c->stash->{'file_name'}  = 'logs.xls';
-        $c->stash->{'log_filter'} = { filter => [$total_filter, Thruk::Utils::Auth::get_auth_filter($c, 'log')],
+        $c->stash->{'_template'}   = 'excel/logs.tt';
+        $c->stash->{'file_name'}   = 'logs.xls';
+        $c->stash->{'log_filter'}  = { filter => [$total_filter, Thruk::Utils::Auth::get_auth_filter($c, 'log')],
                                       sort => {$order => 'time'},
                                     };
         return Thruk::Utils::External::perl($c, { expr => 'Thruk::Utils::logs2xls($c)', message => 'please stand by while your report is being generated...' });
@@ -145,7 +144,7 @@ sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
     $c->stash->{title}            = 'Log File';
     $c->stash->{infoBoxTitle}     = 'Event Log';
     $c->stash->{page}             = 'showlog';
-    $c->stash->{template}         = 'showlog.tt';
+    $c->stash->{_template}        = 'showlog.tt';
     $c->stash->{'no_auto_reload'} = 1;
 
     Thruk::Utils::ssi_include($c);
@@ -164,7 +163,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

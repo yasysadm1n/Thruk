@@ -19,6 +19,7 @@ use URI::Escape qw/uri_escape/;
 use JSON::XS;
 use Encode qw/decode_utf8/;
 use Digest::MD5 qw(md5_hex);
+use HTML::Entities qw//;
 
 ##############################################
 
@@ -236,7 +237,7 @@ sub full_uri {
     my $c    = shift;
     my $amps = shift || 0;
     carp("no c") unless defined $c;
-    my $uri = ''.$c->request->uri_with($c->config->{'View::TT'}->{'PRE_DEFINE'}->{'uri_filter'});
+    my $uri = ''.$c->url_with($c->config->{'View::TT'}->{'PRE_DEFINE'}->{'uri_filter'});
 
     # uri always contains /thruk/, so replace it with our product prefix
     my $url_prefix = $c->stash->{'url_prefix'};
@@ -322,23 +323,29 @@ returns a correct uri
 
 =cut
 sub uri_with {
-    my $c    = shift;
-    my $data = shift;
+    my($c, $data) = @_;
 
-    my $filter = {};
+    my($add, $remove) = ({}, {});
     my %uri_filter = %{$c->config->{'View::TT'}->{'PRE_DEFINE'}->{'uri_filter'}};
     for my $key (keys %uri_filter) {
-        $filter->{$key} = $uri_filter{$key};
+        if(defined $uri_filter{$key}) {
+            $add->{$key}    = $uri_filter{$key};
+        } else {
+            $remove->{$key} = undef;
+        }
     }
     for my $key (keys %{$data}) {
         next unless defined $data->{$key};
-        $filter->{$key} = $data->{$key};
-        $filter->{$key} = undef if $filter->{$key} eq 'undef';
+        $add->{$key} = $data->{$key};
+        if($add->{$key} eq 'undef') {
+            delete $add->{$key};
+            $remove->{$key} = undef;
+        }
     }
 
     my $uri;
     eval {
-        $uri = $c->request->uri_with($filter);
+        $uri = $c->url_with($remove)->query($add);
     };
     if($@) {
         confess("ERROR in uri_with(): ".$@);

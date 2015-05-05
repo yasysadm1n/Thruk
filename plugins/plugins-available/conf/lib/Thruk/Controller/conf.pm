@@ -3,7 +3,7 @@ package Thruk::Controller::conf;
 use strict;
 use warnings;
 use Module::Load qw/load/;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 #use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
@@ -18,30 +18,42 @@ Catalyst Controller.
 
 =cut
 
-######################################
-# add new menu item, but only if user has all of the
-# requested roles
-Thruk::Utils::Menu::insert_item('System', {
-                                    'href'  => '/thruk/cgi-bin/conf.cgi',
-                                    'name'  => 'Config Tool',
-                                    'roles' => [qw/authorized_for_configuration_information
-                                                   authorized_for_system_commands/],
-                         });
+##########################################################
 
-# enable config features if this plugin is loaded
-Thruk->config->{'use_feature_configtool'} = 1;
-
-######################################
-
-=head2 conf_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/conf.cgi
 
 =cut
-sub conf_cgi : Path('/thruk/cgi-bin/conf.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    $c->stash->{'config_backends_only'} = 1;
+
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/conf.cgi')->to(controller => 'Controller::conf', action => 'index');
+
+    # enable config features if this plugin is loaded
+    $app->config->{'use_feature_configtool'} = 1;
+
+    # add new menu item, but only if user has all of the
+    # requested roles
+    Thruk::Utils::Menu::insert_item('System', {
+                                    'href'  => '/thruk/cgi-bin/conf.cgi',
+                                    'name'  => 'Config Tool',
+                                    'roles' => [qw/authorized_for_configuration_information
+                                                   authorized_for_system_commands/],
+    });
+
+    return;
+}
+
+##########################################################
+
+=head2 index
+
+=cut
+sub index { # Safe Defaults required for changing backends
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
 
     if(!$c->config->{'conf_modules_loaded'}) {
         load Thruk::Utils::Conf;
@@ -58,18 +70,6 @@ sub conf_cgi : Path('/thruk/cgi-bin/conf.cgi') {
         load Digest::MD5, qw(md5_hex);
         $c->config->{'conf_modules_loaded'} = 1;
     }
-
-    return $c->detach('/conf/index');
-}
-
-
-##########################################################
-
-=head2 index
-
-=cut
-sub index :Path :Args(0) :MyAction('AddSafeDefaults') { # Safe Defaults required for changing backends
-    my ( $self, $c ) = @_;
 
     # check permissions
     unless( $c->check_user_roles( "authorized_for_configuration_information")
@@ -90,7 +90,7 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') { # Safe Defaults required
     $c->stash->{'no_auto_reload'}      = 1;
     $c->stash->{title}                 = 'Config Tool';
     $c->stash->{page}                  = 'config';
-    $c->stash->{template}              = 'conf.tt';
+    $c->stash->{_template}             = 'conf.tt';
     $c->stash->{subtitle}              = 'Config Tool';
     $c->stash->{infoBoxTitle}          = 'Config Tool';
     $c->stash->{'last_changed'}        = 0;
@@ -130,33 +130,33 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') { # Safe Defaults required
     $c->stash->{conf_config}->{'show_plugin_syntax_helper'} = 1 unless defined $c->stash->{conf_config}->{'show_plugin_syntax_helper'};
 
     if($action eq 'cgi_contacts') {
-        return $self->_process_cgiusers_page($c);
+        return _process_cgiusers_page($c);
     }
     elsif($action eq 'json') {
-        return $self->_process_json_page($c);
+        return _process_json_page($c);
     }
 
     # show settings page
     if($subcat eq 'cgi') {
         return if Thruk::Action::AddDefaults::die_when_no_backends($c);
-        $self->_process_cgi_page($c);
+        _process_cgi_page($c);
     }
     elsif($subcat eq 'thruk') {
-        $self->_process_thruk_page($c);
+        _process_thruk_page($c);
     }
     elsif($subcat eq 'users') {
         return if Thruk::Action::AddDefaults::die_when_no_backends($c);
-        $self->_process_users_page($c);
+        _process_users_page($c);
     }
     elsif($subcat eq 'plugins') {
-        $self->_process_plugins_page($c);
+        _process_plugins_page($c);
     }
     elsif($subcat eq 'backends') {
-        $self->_process_backends_page($c);
+        _process_backends_page($c);
     }
     elsif($subcat eq 'objects') {
         $c->stash->{'obj_model_changed'} = 1;
-        $self->_process_objects_page($c);
+        _process_objects_page($c);
         Thruk::Utils::Conf::store_model_retention($c) if $c->stash->{'obj_model_changed'};
         $c->stash->{'parse_errors'} = $c->{'obj_db'}->{'parse_errors'};
     }
@@ -168,7 +168,7 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') { # Safe Defaults required
 ##########################################################
 # return json list for ajax search
 sub _process_json_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     return unless Thruk::Utils::Conf::set_object_model($c);
 
@@ -186,10 +186,8 @@ sub _process_json_page {
                 $resolved = join(' ', @addresses);
             }
         }
-        my $json            = { 'address' => $resolved };
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        my $json = { 'address' => $resolved };
+        return $c->render(json => $json);
     }
 
     # icons?
@@ -209,10 +207,8 @@ sub _process_json_page {
             $file =~ s/$dir\///gmx;
             push @{$objects}, $file." - ".$c->stash->{'logo_path_prefix'}.$file;
         }
-        my $json            = [ { 'name' => $type.'s', 'data' => $objects } ];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        my $json = [ { 'name' => $type.'s', 'data' => $objects } ];
+        return $c->render(json => $json);
     }
 
     # macros
@@ -258,43 +254,35 @@ sub _process_json_page {
                 push @{$json}, { 'name' => 'arguments', 'data' => Thruk::Utils::array_uniq(\@options) } if scalar @options > 0;
             }
         }
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        return $c->render(json => $json);
     }
 
     # plugins
     if($type eq 'plugin') {
-        my $plugins         = $c->{'obj_db'}->get_plugins($c);
-        my $json            = [ { 'name' => 'plugins', 'data' => [ sort keys %{$plugins} ] } ];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        my $plugins = $c->{'obj_db'}->get_plugins($c);
+        my $json    = [ { 'name' => 'plugins', 'data' => [ sort keys %{$plugins} ] } ];
+        return $c->render(json => $json);
     }
 
     # plugin help
     if($type eq 'pluginhelp' and $c->stash->{conf_config}->{'show_plugin_syntax_helper'}) {
         return unless Thruk::Utils::check_csrf($c);
-        my $help            = $c->{'obj_db'}->get_plugin_help($c, $c->{'request'}->{'parameters'}->{'plugin'});
-        my $json            = [ { 'plugin_help' => $help } ];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        my $help = $c->{'obj_db'}->get_plugin_help($c, $c->{'request'}->{'parameters'}->{'plugin'});
+        my $json = [ { 'plugin_help' => $help } ];
+        return $c->render(json => $json);
     }
 
     # plugin preview
     if($type eq 'pluginpreview' and $c->stash->{conf_config}->{'show_plugin_syntax_helper'}) {
         return unless Thruk::Utils::check_csrf($c);
-        my $output          = $c->{'obj_db'}->get_plugin_preview($c,
-                                                         $c->{'request'}->{'parameters'}->{'command'},
-                                                         $c->{'request'}->{'parameters'}->{'args'},
-                                                         $c->{'request'}->{'parameters'}->{'host'},
-                                                         $c->{'request'}->{'parameters'}->{'service'},
-                                                        );
-        my $json            = [ { 'plugin_output' => $output } ];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        my $output = $c->{'obj_db'}->get_plugin_preview($c,
+                                         $c->{'request'}->{'parameters'}->{'command'},
+                                         $c->{'request'}->{'parameters'}->{'args'},
+                                         $c->{'request'}->{'parameters'}->{'host'},
+                                         $c->{'request'}->{'parameters'}->{'service'},
+                                     );
+        my $json   = [ { 'plugin_output' => $output } ];
+        return $c->render(json => $json);
     }
 
     # command line
@@ -306,9 +294,7 @@ sub _process_json_page {
         if(defined $objects->[0]) {
             $json = [ { 'cmd_line' => $objects->[0]->{'conf'}->{'command_line'} } ];
         }
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        return $c->render(json => $json);
     }
 
     # servicemembers
@@ -327,9 +313,7 @@ sub _process_json_page {
         my $json = [{ 'name' => $type.'s',
                       'data' => [ sort @{Thruk::Utils::array_uniq($members)} ],
                    }];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        return $c->render(json => $json);
     }
 
     # objects attributes
@@ -340,9 +324,7 @@ sub _process_json_page {
         my $json = [{ 'name' => $type.'s',
                       'data' => [ sort @{Thruk::Utils::array_uniq($attr)} ],
                    }];
-        $c->stash->{'json'} = $json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        return $c->render(json => $json);
     }
 
     # objects
@@ -361,7 +343,7 @@ sub _process_json_page {
         }
         for my $typ (sort keys %{$types}) {
             push @{$json}, {
-                  'name' => $self->_translate_type($typ)."s",
+                  'name' => _translate_type($typ)."s",
                   'data' => [ sort keys %{$types->{$typ}} ],
             };
         }
@@ -391,31 +373,27 @@ sub _process_json_page {
                   }
                 ];
     }
-    $c->stash->{'json'} = $json;
-    $c->forward('Thruk::View::JSON');
-    return;
+    return $c->render(json => $json);
 }
 
 
 ##########################################################
 # create the cgi.cfg config page
 sub _process_cgiusers_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $contacts        = Thruk::Utils::Conf::get_cgi_user_list($c);
     delete $contacts->{'*'}; # we dont need this user here
     my $data            = [ values %{$contacts} ];
     my $json            = [ { 'name' => "contacts", 'data' => $data } ];
-    $c->stash->{'json'} = $json;
-    $c->forward('Thruk::View::JSON');
-    return;
+    return $c->render(json => $json);
 }
 
 
 ##########################################################
 # create the cgi.cfg config page
 sub _process_cgi_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $file     = $c->config->{'Thruk::Plugin::ConfigTool'}->{'cgi.cfg'};
     return unless defined $file;
@@ -442,7 +420,7 @@ sub _process_cgi_page {
             next if $key !~ m/^authorized_for_/mx;
             $data->{$key} = [] unless defined $data->{$key};
         }
-        $self->_store_changes($c, $file, $data, $defaults);
+        _store_changes($c, $file, $data, $defaults);
         return $c->response->redirect('conf.cgi?sub=cgi');
     }
 
@@ -501,11 +479,11 @@ sub _process_cgi_page {
         ],
     ];
 
-    $c->stash->{'keys'}     = $keys;
-    $c->stash->{'data'}     = $data;
-    $c->stash->{'md5'}      = $md5;
-    $c->stash->{'subtitle'} = "CGI &amp; Access Configuration";
-    $c->stash->{'template'} = 'conf_data.tt';
+    $c->stash->{'keys'}      = $keys;
+    $c->stash->{'data'}      = $data;
+    $c->stash->{'md5'}       = $md5;
+    $c->stash->{'subtitle'}  = "CGI &amp; Access Configuration";
+    $c->stash->{'_template'} = 'conf_data.tt';
 
     return 1;
 }
@@ -513,7 +491,7 @@ sub _process_cgi_page {
 ##########################################################
 # create the thruk config page
 sub _process_thruk_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $file     = $c->config->{'Thruk::Plugin::ConfigTool'}->{'thruk'};
     return unless defined $file;
@@ -529,7 +507,7 @@ sub _process_thruk_page {
         return unless Thruk::Utils::check_csrf($c);
 
         my $data = Thruk::Utils::Conf::get_data_from_param($c->{'request'}->{'parameters'}, $defaults);
-        if($self->_store_changes($c, $file, $data, $defaults, $c)) {
+        if(_store_changes($c, $file, $data, $defaults, $c)) {
             return Thruk::Utils::restart_later($c, $c->stash->{url_prefix}.'cgi-bin/conf.cgi?sub=thruk');
         } else {
             return $c->response->redirect('conf.cgi?sub=thruk');
@@ -604,11 +582,11 @@ sub _process_thruk_page {
         ],
     ];
 
-    $c->stash->{'keys'}     = $keys;
-    $c->stash->{'data'}     = $data;
-    $c->stash->{'md5'}      = $md5;
-    $c->stash->{'subtitle'} = "Thruk Configuration";
-    $c->stash->{'template'} = 'conf_data.tt';
+    $c->stash->{'keys'}      = $keys;
+    $c->stash->{'data'}      = $data;
+    $c->stash->{'md5'}       = $md5;
+    $c->stash->{'subtitle'}  = "Thruk Configuration";
+    $c->stash->{'_template'} = 'conf_data.tt';
 
     return 1;
 }
@@ -616,7 +594,7 @@ sub _process_thruk_page {
 ##########################################################
 # create the users config page
 sub _process_users_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $file     = $c->config->{'Thruk::Plugin::ConfigTool'}->{'cgi.cfg'};
     return unless defined $file;
@@ -632,7 +610,7 @@ sub _process_users_page {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
             return $c->response->redirect($redirect);
         }
-        my $msg = $self->_update_password($c);
+        my $msg = _update_password($c);
         if(defined $msg) {
             Thruk::Utils::set_message( $c, 'fail_message', $msg );
             return $c->response->redirect($redirect);
@@ -655,7 +633,7 @@ sub _process_users_page {
             }
             @{$new_data->{$key}} = sort keys %{$users};
         }
-        $self->_store_changes($c, $file, $new_data, $defaults);
+        _store_changes($c, $file, $new_data, $defaults);
 
         Thruk::Utils::set_message( $c, 'success_message', 'User saved successfully' );
         return $c->response->redirect($redirect);
@@ -708,8 +686,8 @@ sub _process_users_page {
         $c->stash->{'roles_by_group'} = $roles_by_group;
     }
 
-    $c->stash->{'subtitle'} = "User Configuration";
-    $c->stash->{'template'} = 'conf_data_users.tt';
+    $c->stash->{'subtitle'}  = "User Configuration";
+    $c->stash->{'_template'} = 'conf_data_users.tt';
 
     return 1;
 }
@@ -717,7 +695,7 @@ sub _process_users_page {
 ##########################################################
 # create the plugins config page
 sub _process_plugins_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $project_root         = $c->config->{home};
     my $plugin_dir           = $c->config->{'plugin_path'} || $project_root."/plugins";
@@ -736,11 +714,11 @@ sub _process_plugins_page {
         }
         my $path = $plugin_available_dir.'/'.$pic.'/preview.png';
         $c->res->content_type('images/png');
-        $c->stash->{'text'} = "";
+        $c->stash->{'_text'} = "";
         if(-e $path) {
-            $c->stash->{'text'} = read_file($path);
+            $c->stash->{'_text'} = read_file($path);
         }
-        $c->stash->{'template'} = 'passthrough.tt';
+        $c->stash->{'_template'} = 'passthrough.tt';
         return 1;
     }
     elsif($c->stash->{action} eq 'save') {
@@ -789,9 +767,9 @@ sub _process_plugins_page {
         $plugins->{$addon_name}->{'enabled'} = 1;
     }
 
-    $c->stash->{'plugins'}  = $plugins;
-    $c->stash->{'subtitle'} = "Thruk Addons &amp; Plugin Manager";
-    $c->stash->{'template'} = 'conf_plugins.tt';
+    $c->stash->{'plugins'}   = $plugins;
+    $c->stash->{'subtitle'}  = "Thruk Addons &amp; Plugin Manager";
+    $c->stash->{'_template'} = 'conf_plugins.tt';
 
     return 1;
 }
@@ -799,7 +777,7 @@ sub _process_plugins_page {
 ##########################################################
 # create the backends config page
 sub _process_backends_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $file = $c->config->{'Thruk::Plugin::ConfigTool'}->{'thruk'};
     return unless $file;
@@ -883,15 +861,16 @@ sub _process_backends_page {
                                                 });
             @test   = $con->{'class'}->get_processinfo();
         };
+        my $json;
         if(scalar @test >= 2 and ref $test[0] eq 'HASH' and scalar keys %{$test[0]} == 1 and scalar keys %{$test[0]->{(keys %{$test[0]})[0]}} > 0) {
-            $c->stash->{'json'} = { ok => 1 };
+            $json = { ok => 1 };
         } else {
             my $error = $@;
             $error =~ s/\s+at\s\/.*//gmx;
             $error = 'got no valid result' if $error eq '';
-            $c->stash->{'json'} = { ok => 0, error => $error };
+            $json = { ok => 0, error => $error };
         }
-        return $c->forward('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
     my $backends = [];
@@ -932,9 +911,9 @@ sub _process_backends_page {
         $b->{'section'}     = '' unless defined $b->{'section'};
         $b->{'type'}        = lc($b->{'type'});
     }
-    $c->stash->{'sites'}    = $backends;
-    $c->stash->{'subtitle'} = "Thruk Backends Manager";
-    $c->stash->{'template'} = 'conf_backends.tt';
+    $c->stash->{'sites'}     = $backends;
+    $c->stash->{'subtitle'}  = "Thruk Backends Manager";
+    $c->stash->{'_template'} = 'conf_backends.tt';
 
     return 1;
 }
@@ -942,14 +921,14 @@ sub _process_backends_page {
 ##########################################################
 # create the objects config page
 sub _process_objects_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     return unless Thruk::Utils::Conf::set_object_model($c);
 
     _check_external_reload($c);
 
     $c->stash->{'subtitle'}         = "Object Configuration";
-    $c->stash->{'template'}         = 'conf_objects.tt';
+    $c->stash->{'_template'}        = 'conf_objects.tt';
     $c->stash->{'file_link'}        = "";
     $c->stash->{'coretype'}         = $c->{'obj_db'}->{'coretype'};
     $c->stash->{'bare'}             = $c->{'request'}->{'parameters'}->{'bare'} || 0;
@@ -958,7 +937,7 @@ sub _process_objects_page {
     $c->{'obj_db'}->read_rc_file();
 
     # check if we have a history for our configs
-    my $files_root = $self->_set_files_stash($c);
+    my $files_root = _set_files_stash($c);
     my $dir        = $c->{'obj_db'}->{'config'}->{'git_base_dir'} || $c->config->{'Thruk::Plugin::ConfigTool'}->{'git_base_dir'} || $files_root;
     if(-d $dir) {
         local $SIG{CHLD} = 'DEFAULT';
@@ -971,36 +950,36 @@ sub _process_objects_page {
 
     # apply changes?
     if(defined $c->{'request'}->{'parameters'}->{'apply'}) {
-        return if $self->_apply_config_changes($c);
+        return if _apply_config_changes($c);
     }
 
     # tools menu
     if(defined $c->{'request'}->{'parameters'}->{'tools'}) {
-        return if $self->_process_tools_page($c);
+        return if _process_tools_page($c);
     }
 
     # get object from params
     $c->stash->{cloned} = 0;
-    my $obj = $self->_get_context_object($c);
+    my $obj = _get_context_object($c);
     if(defined $obj) {
 
         # revert all changes from one file
         if($c->stash->{action} eq 'revert') {
             return unless Thruk::Utils::check_csrf($c);
-            return if $self->_object_revert($c, $obj);
+            return if _object_revert($c, $obj);
         }
 
         # save this object
         elsif($c->stash->{action} eq 'store') {
             return unless Thruk::Utils::check_csrf($c);
-            my $rc = $self->_object_save($c, $obj);
+            my $rc = _object_save($c, $obj);
             if($rc && defined $c->{'request'}->{'parameters'}->{'cloned'}) {
                 if(!$obj->is_template()) {
-                    $self->_clone_refs($c, $obj, $c->{'request'}->{'parameters'}->{'cloned'});
+                    _clone_refs($c, $obj, $c->{'request'}->{'parameters'}->{'cloned'});
                 }
             }
             if(defined $c->{'request'}->{'parameters'}->{'save_and_reload'}) {
-                return if $self->_apply_config_changes($c);
+                return if _apply_config_changes($c);
             }
             return if $rc;
             $c->stash->{cloned} = $c->{'request'}->{'parameters'}->{'cloned'} || 0;
@@ -1009,91 +988,91 @@ sub _process_objects_page {
         # disable this object temporarily
         elsif($c->stash->{action} eq 'disable') {
             return unless Thruk::Utils::check_csrf($c);
-            return if $self->_object_disable($c, $obj);
+            return if _object_disable($c, $obj);
         }
 
         # enable this object
         elsif($c->stash->{action} eq 'enable') {
             return unless Thruk::Utils::check_csrf($c);
-            return if $self->_object_enable($c, $obj);
+            return if _object_enable($c, $obj);
         }
 
         # delete this object
         elsif($c->stash->{action} eq 'delete') {
             return unless Thruk::Utils::check_csrf($c);
-            return if $self->_object_delete($c, $obj);
+            return if _object_delete($c, $obj);
         }
 
         # move objects
         elsif(   $c->stash->{action} eq 'move'
               or $c->stash->{action} eq 'movefile') {
-            return if $self->_object_move($c, $obj);
+            return if _object_move($c, $obj);
         }
 
         # clone this object
         elsif($c->stash->{action} eq 'clone') {
             return unless Thruk::Utils::check_csrf($c);
             $c->stash->{cloned} = $obj->get_id() || 0;
-            $obj = $self->_object_clone($c, $obj);
+            $obj = _object_clone($c, $obj);
         }
 
         # list services for host
         elsif($c->stash->{action} eq 'listservices' and $obj->get_type() eq 'host') {
-            return if $self->_host_list_services($c, $obj);
+            return if _host_list_services($c, $obj);
         }
 
         # list references
         elsif($c->stash->{action} eq 'listref') {
-            return if $self->_list_references($c, $obj);
+            return if _list_references($c, $obj);
         }
     }
 
     # create new object
     if($c->stash->{action} eq 'new') {
-        $obj = $self->_object_new($c);
+        $obj = _object_new($c);
     }
 
     # browse files
     elsif($c->stash->{action} eq 'browser') {
-        return if $self->_file_browser($c);
+        return if _file_browser($c);
     }
 
     # object tree
     elsif($c->stash->{action} eq 'tree') {
-        return if $self->_object_tree($c);
+        return if _object_tree($c);
     }
 
     # object tree content
     elsif($c->stash->{action} eq 'tree_objects') {
-        return if $self->_object_tree_objects($c);
+        return if _object_tree_objects($c);
     }
 
     # file editor
     elsif($c->stash->{action} eq 'editor') {
-        return if $self->_file_editor($c);
+        return if _file_editor($c);
     }
 
     # history
     elsif($c->stash->{action} eq 'history') {
-        return if $self->_file_history($c);
+        return if _file_history($c);
     }
 
     # save changed files from editor
     elsif($c->stash->{action} eq 'savefile') {
         return unless Thruk::Utils::check_csrf($c);
-        return if $self->_file_save($c);
+        return if _file_save($c);
     }
 
     # delete files/folders from browser
     elsif($c->stash->{action} eq 'deletefiles') {
         return unless Thruk::Utils::check_csrf($c);
-        return if $self->_file_delete($c);
+        return if _file_delete($c);
     }
 
     # undelete files/folders from browser
     elsif($c->stash->{action} eq 'undeletefiles') {
         return unless Thruk::Utils::check_csrf($c);
-        return if $self->_file_undelete($c);
+        return if _file_undelete($c);
     }
 
     # set type and name of object
@@ -1108,7 +1087,7 @@ sub _process_objects_page {
             delete $obj->{'file'};
         }
         $c->stash->{'file_link'} = $obj->{'file'}->{'display'} if defined $obj->{'file'};
-        $self->_gather_references($c, $obj);
+        _gather_references($c, $obj);
     }
 
     # set default type for start page
@@ -1128,10 +1107,10 @@ sub _process_objects_page {
 ##########################################################
 # apply config changes
 sub _apply_config_changes {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
     $c->stash->{'subtitle'}      = "Apply Config Changes";
-    $c->stash->{'template'}      = 'conf_objects_apply.tt';
+    $c->stash->{'_template'}     = 'conf_objects_apply.tt';
     $c->stash->{'output'}        = '';
     $c->stash->{'changed_files'} = $c->{'obj_db'}->get_changed_files();
 
@@ -1237,20 +1216,20 @@ sub _apply_config_changes {
 ##########################################################
 # show tools page
 sub _process_tools_page {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
-    $c->stash->{'subtitle'} = 'Config Tools';
-    $c->stash->{'template'} = 'conf_objects_tools.tt';
-    $c->stash->{'output'}   = '';
-    $c->stash->{'action'}   = 'tools';
-    $c->stash->{'results'}  = [];
-    my $tool                = $c->{'request'}->{'parameters'}->{'tools'} || '';
-    $tool                   =~ s/[^a-zA-Z_]//gmx;
-    my $tools               = _get_tools($c);
-    $c->stash->{'tools'}    = $tools;
-    my $ignore_file         = $c->config->{'var_path'}.'/conf_tools_ignore';
-    my $ignores             = -s $ignore_file ? Thruk::Utils::IO::json_lock_retrieve($ignore_file) : {};
-    $c->stash->{'tool'}     = $tool;
+    $c->stash->{'subtitle'}  = 'Config Tools';
+    $c->stash->{'_template'} = 'conf_objects_tools.tt';
+    $c->stash->{'output'}    = '';
+    $c->stash->{'action'}    = 'tools';
+    $c->stash->{'results'}   = [];
+    my $tool                 = $c->{'request'}->{'parameters'}->{'tools'} || '';
+    $tool                    =~ s/[^a-zA-Z_]//gmx;
+    my $tools                = _get_tools($c);
+    $c->stash->{'tools'}     = $tools;
+    my $ignore_file          = $c->config->{'var_path'}.'/conf_tools_ignore';
+    my $ignores              = -s $ignore_file ? Thruk::Utils::IO::json_lock_retrieve($ignore_file) : {};
+    $c->stash->{'tool'}      = $tool;
 
     if($tool eq 'start') {
     }
@@ -1267,8 +1246,8 @@ sub _process_tools_page {
         if($c->{'request'}->{'parameters'}->{'ignore'}) {
             $ignores->{$tool}->{$c->{'request'}->{'parameters'}->{'ident'}} = 1;
             Thruk::Utils::IO::json_lock_store($ignore_file, $ignores);
-            $c->stash->{'json'} = {'ok' => 1};
-            return $c->forward('Thruk::View::JSON');
+            my $json = {'ok' => 1};
+            return $c->render(json => $json);
         }
         $c->stash->{'toolobj'} = $tools->{$tool};
         if($c->{'request'}->{'parameters'}->{'cleanup'} && $c->{'request'}->{'parameters'}->{'ident'}) {
@@ -1276,8 +1255,8 @@ sub _process_tools_page {
             if($c->{'request'}->{'parameters'}->{'ident'} eq 'all') {
                 return $c->response->redirect('conf.cgi?sub=objects&tools='.$tool);
             }
-            $c->stash->{'json'} = {'ok' => 1};
-            return $c->forward('Thruk::View::JSON');
+            my $json = {'ok' => 1};
+            return $c->render(json => $json);
         } else {
             my($hidden, $results) = $tools->{$tool}->get_list($c, $ignores->{$tool});
             @{$results} = sort { $a->{'type'} cmp $b->{'type'} || $a->{'name'} cmp $b->{'name'} } @{$results};
@@ -1332,7 +1311,7 @@ sub _get_tools {
 ##########################################################
 # update a users password
 sub _update_password {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
     my $user = $c->{'request'}->{'parameters'}->{'data.username'};
     my $send = $c->{'request'}->{'parameters'}->{'send'} || 'save';
@@ -1346,7 +1325,7 @@ sub _update_password {
         if($send eq 'remove password') {
             return unless Thruk::Utils::check_csrf($c);
             my $cmd = [ $htpasswd, '-D', $c->config->{'Thruk::Plugin::ConfigTool'}->{'htpasswd'}, $user ];
-            if($self->_cmd($c, $cmd)) {
+            if(_cmd($c, $cmd)) {
                 $c->log->info("removed password for ".$user);
                 return;
             }
@@ -1365,7 +1344,7 @@ sub _update_password {
                 push @{$cmd}, $c->config->{'Thruk::Plugin::ConfigTool'}->{'htpasswd'};
                 push @{$cmd}, $user;
                 push @{$cmd}, $pass1;
-                if($self->_cmd($c, $cmd)) {
+                if(_cmd($c, $cmd)) {
                     $c->log->info("changed password for ".$user);
                     return;
                 }
@@ -1382,7 +1361,7 @@ sub _update_password {
 ##########################################################
 # store changes to a file
 sub _store_changes {
-    my ( $self, $c, $file, $data, $defaults, $update_in_conf ) = @_;
+    my ( $c, $file, $data, $defaults, $update_in_conf ) = @_;
     return unless Thruk::Utils::check_csrf($c);
     my $old_md5 = $c->{'request'}->{'parameters'}->{'md5'};
     if(!defined $old_md5 or $old_md5 eq '') {
@@ -1408,7 +1387,7 @@ sub _store_changes {
 ##########################################################
 # execute cmd
 sub _cmd {
-    my ( $self, $c, $cmd ) = @_;
+    my ( $c, $cmd ) = @_;
 
     my($rc, $output) = Thruk::Utils::IO::cmd($c, $cmd);
     $c->stash->{'output'} = $output;
@@ -1427,7 +1406,7 @@ sub _find_files {
 
 ##########################################################
 sub _get_context_object {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     my $obj;
 
@@ -1476,7 +1455,7 @@ sub _get_context_object {
                                                 coretype => $c->{'obj_db'}->{'coretype'},
                                               );
         my $new_file   = $c->{'request'}->{'parameters'}->{'data.file'} || '';
-        my $file = $self->_get_context_file($c, $obj, $new_file);
+        my $file = _get_context_file($c, $obj, $new_file);
         return $obj unless $file;
         $obj->set_file($file);
         $obj->set_uniq_id($c->{'obj_db'});
@@ -1537,7 +1516,7 @@ sub _get_context_object {
 
 ##########################################################
 sub _get_context_file {
-    my($self, $c, $obj, $new_file) = @_;
+    my($c, $obj, $new_file) = @_;
     my $files_root = $c->{'obj_db'}->get_files_root();
     if($files_root eq '') {
         $c->stash->{'new_file'} = '';
@@ -1580,7 +1559,7 @@ sub _get_context_file {
 
 ##########################################################
 sub _translate_type {
-    my($self, $type) = @_;
+    my($type) = @_;
     my $tt   = {
         'host_name'      => 'host',
         'hostgroup_name' => 'hostgroup',
@@ -1591,7 +1570,7 @@ sub _translate_type {
 
 ##########################################################
 sub _files_to_path {
-    my($self, $c, $files) = @_;
+    my($c, $files) = @_;
 
     my $folder = { 'dirs' => {}, 'files' => {}, 'path' => '', 'date' => '' };
 
@@ -1643,10 +1622,10 @@ sub _files_to_path {
 
 ##########################################################
 sub _set_files_stash {
-    my($self, $c, $skip_readonly_files) = @_;
+    my($c, $skip_readonly_files) = @_;
 
     my $all_files  = $c->{'obj_db'}->get_files();
-    my $files_tree = $self->_files_to_path($c, $all_files);
+    my $files_tree = _files_to_path($c, $all_files);
     my $files_root = $files_tree->{'path'};
     my @filenames;
     for my $file (@{$all_files}) {
@@ -1676,7 +1655,7 @@ sub _set_files_stash {
 
 ##########################################################
 sub _object_revert {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     my $id = $obj->get_id();
     if(-e $obj->{'file'}->{'path'}) {
@@ -1700,7 +1679,7 @@ sub _object_revert {
 
 ##########################################################
 sub _object_disable {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     my $id = $obj->get_id();
     $obj->{'disabled'}               = 1;
@@ -1721,7 +1700,7 @@ sub _object_disable {
 
 ##########################################################
 sub _object_enable {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     my $id = $obj->get_id();
     $obj->{'disabled'}               = 0;
@@ -1742,7 +1721,7 @@ sub _object_enable {
 
 ##########################################################
 sub _object_delete {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     if(!$c->{'request'}->{'parameters'}->{'force'}) {
         my $refs = $c->{'obj_db'}->get_references($obj);
@@ -1767,7 +1746,7 @@ sub _object_delete {
 
 ##########################################################
 sub _object_save {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     my $data        = $obj->get_data_from_param($c->{'request'}->{'parameters'});
     my $old_comment = join("\n", @{$obj->{'comments'}});
@@ -1824,13 +1803,13 @@ sub _object_save {
 
 ##########################################################
 sub _object_move {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
-    my $files_root = $self->_set_files_stash($c, 1);
+    my $files_root = _set_files_stash($c, 1);
     if($c->stash->{action} eq 'movefile') {
         return unless Thruk::Utils::check_csrf($c);
         my $new_file = $c->{'request'}->{'parameters'}->{'newfile'};
-        my $file     = $self->_get_context_file($c, $obj, $new_file);
+        my $file     = _get_context_file($c, $obj, $new_file);
         if(defined $file and $c->{'obj_db'}->move_object($obj, $file)) {
             Thruk::Utils::set_message( $c, 'success_message', ucfirst($c->stash->{'type'}).' \''.$obj->get_name().'\' moved successfully' );
         }
@@ -1847,16 +1826,16 @@ sub _object_move {
         return $c->response->redirect('conf.cgi?sub=objects&data.id='.$obj->get_id());
     }
     elsif($c->stash->{action} eq 'move') {
-        $c->stash->{'template'}  = 'conf_objects_move.tt';
+        $c->stash->{'_template'} = 'conf_objects_move.tt';
     }
     return;
 }
 
 ##########################################################
 sub _object_clone {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
-    my $files_root          = $self->_set_files_stash($c, 1);
+    my $files_root          = _set_files_stash($c, 1);
     $c->stash->{'new_file'} = $obj->{'file'}->{'display'};
     $c->stash->{'new_file'} =~ s/^$files_root/\//gmx;
     # if cloned from a readonly file, keep new_file empty
@@ -1872,7 +1851,7 @@ sub _object_clone {
 
 ##########################################################
 sub _clone_refs {
-    my($self, $c, $obj, $cloned_id) = @_;
+    my($c, $obj, $cloned_id) = @_;
     return unless $cloned_id;
     my $new_name = $obj->get_name();
     my $orig     = $c->{'obj_db'}->get_object_by_id($cloned_id);
@@ -1895,9 +1874,9 @@ sub _clone_refs {
 
 ##########################################################
 sub _object_new {
-    my($self, $c) = @_;
+    my($c) = @_;
 
-    $self->_set_files_stash($c, 1);
+    _set_files_stash($c, 1);
     $c->stash->{'new_file'} = '';
     my $obj = Monitoring::Config::Object->new(type     => $c->stash->{'type'},
                                               name     => $c->stash->{'data_name'},
@@ -1920,7 +1899,7 @@ sub _object_new {
 
 ##########################################################
 sub _file_delete {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     my $path = $c->{'request'}->{'parameters'}->{'path'} || '';
     $path    =~ s/^\#//gmx;
@@ -1940,7 +1919,7 @@ sub _file_delete {
 
 ##########################################################
 sub _file_undelete {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     my $path = $c->{'request'}->{'parameters'}->{'path'} || '';
     $path    =~ s/^\#//gmx;
@@ -1960,7 +1939,7 @@ sub _file_undelete {
 
 ##########################################################
 sub _file_save {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     my $filename = $c->{'request'}->{'parameters'}->{'file'}    || '';
     my $content  = $c->{'request'}->{'parameters'}->{'content'} || '';
@@ -1970,7 +1949,7 @@ sub _file_save {
     if(defined $file) {
         $lastobj = $file->update_objects_from_text($content, $lastline);
         $c->{'obj_db'}->_rebuild_index();
-        my $files_root                   = $self->_set_files_stash($c, 1);
+        my $files_root                   = _set_files_stash($c, 1);
         $c->{'obj_db'}->{'needs_commit'} = 1;
         $c->stash->{'file_name'}         = $file->{'display'};
         $c->stash->{'file_name'}         =~ s/^$files_root//gmx;
@@ -1995,9 +1974,9 @@ sub _file_save {
 
 ##########################################################
 sub _file_editor {
-    my($self, $c) = @_;
+    my($c) = @_;
 
-    my $files_root  = $self->_set_files_stash($c);
+    my $files_root  = _set_files_stash($c);
     my $filename    = $c->{'request'}->{'parameters'}->{'file'} || '';
     my $file        = $c->{'obj_db'}->get_file_by_path($filename);
     if(defined $file) {
@@ -2008,7 +1987,7 @@ sub _file_editor {
         $c->stash->{'file_name'}     = $file->{'display'};
         $c->stash->{'file_name'}     =~ s/^$files_root//gmx;
         $c->stash->{'file_content'}  = decode_utf8($file->get_new_file_content());
-        $c->stash->{'template'}      = 'conf_objects_fileeditor.tt';
+        $c->stash->{'_template'}     = 'conf_objects_fileeditor.tt';
     } else {
         Thruk::Utils::set_message( $c, 'fail_message', 'File does not exist' );
     }
@@ -2017,16 +1996,16 @@ sub _file_editor {
 
 ##########################################################
 sub _file_browser {
-    my($self, $c) = @_;
+    my($c) = @_;
 
-    $self->_set_files_stash($c);
-    $c->stash->{'template'} = 'conf_objects_filebrowser.tt';
+    _set_files_stash($c);
+    $c->stash->{'_template'} = 'conf_objects_filebrowser.tt';
     return;
 }
 
 ##########################################################
 sub _file_history {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     return 1 unless $c->stash->{'has_history'};
 
@@ -2034,13 +2013,13 @@ sub _file_history {
     my $files_root = $c->{'obj_db'}->get_files_root();
     my $dir        = $c->{'obj_db'}->{'config'}->{'git_base_dir'} || $c->config->{'Thruk::Plugin::ConfigTool'}->{'git_base_dir'} || $files_root;
 
-    $c->stash->{'template'} = 'conf_objects_filehistory.tt';
+    $c->stash->{'_template'} = 'conf_objects_filehistory.tt';
 
     if($commit) {
-        return if $self->_file_history_commit($c, $commit, $dir);
+        return if _file_history_commit($c, $commit, $dir);
     }
 
-    my $logs = $self->_get_git_logs($c, $dir);
+    my $logs = _get_git_logs($c, $dir);
 
     Thruk::Backend::Manager::_page_data(undef, $c, $logs);
     $c->stash->{'logs'} = $logs;
@@ -2050,7 +2029,7 @@ sub _file_history {
 
 ##########################################################
 sub _file_history_commit {
-    my($self, $c, $commit, $dir) = @_;
+    my($c, $commit, $dir) = @_;
 
     # verify our commit id
     if($commit !~ m/^[a-zA-Z0-9]+$/mx) {
@@ -2058,9 +2037,9 @@ sub _file_history_commit {
         return;
     }
 
-    $c->stash->{'template'}   = 'conf_objects_filehistory_commit.tt';
+    $c->stash->{'_template'} = 'conf_objects_filehistory_commit.tt';
 
-    my $data = $self->_get_git_commit($c, $dir, $commit);
+    my $data = _get_git_commit($c, $dir, $commit);
     if(!$data) {
         Thruk::Utils::set_message( $c, 'fail_message', 'Not a valid commit!' );
         return;
@@ -2068,11 +2047,11 @@ sub _file_history_commit {
 
     $c->stash->{'previous'} = '';
     $c->stash->{'next'}     = '';
-    my $logs = $self->_get_git_logs($c, $dir);
+    my $logs = _get_git_logs($c, $dir);
     for my $l (@{$logs}) {
         if($l->{'id'} eq $data->{'id'}) {
-            $c->stash->{'previous'} = $self->_get_git_commit($c, $dir, $l->{'previous'}) if $l->{'previous'};
-            $c->stash->{'next'}     = $self->_get_git_commit($c, $dir, $l->{'next'})     if $l->{'next'};
+            $c->stash->{'previous'} = _get_git_commit($c, $dir, $l->{'previous'}) if $l->{'previous'};
+            $c->stash->{'next'}     = _get_git_commit($c, $dir, $l->{'next'})     if $l->{'next'};
             last;
         }
     }
@@ -2097,7 +2076,7 @@ sub _file_history_commit {
 
 ##########################################################
 sub _get_git_logs {
-    my($self, $c, $dir) = @_;
+    my($c, $dir) = @_;
     my $cmd = "cd '".$dir."' && git log --pretty='format:".join("\x1f", '%h', '%an', '%ae', '%at', '%s')."\x1e' -- .";
     my $out = `$cmd`;
     my $logs = [];
@@ -2125,7 +2104,7 @@ sub _get_git_logs {
 
 ##########################################################
 sub _get_git_commit {
-    my($self, $c, $dir, $commit) = @_;
+    my($c, $dir, $commit) = @_;
     my $cmd = "cd '".$dir."' && git show --pretty='format:".join("\x1f", '%h', '%an', '%ae', '%at', '%p', '%t', '%s', '%b')."\x1f' ".$commit;
     my $output = `$cmd`;
     my @d = split(/\x1f/mx, $output);
@@ -2158,7 +2137,7 @@ sub _diff_link {
 
 ##########################################################
 sub _object_tree {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     # create list of templates
     for my $type (qw/host service contact/) {
@@ -2179,13 +2158,13 @@ sub _object_tree {
         $c->stash->{$type.'templates'} = $templates;
     }
 
-    $c->stash->{'template'} = 'conf_objects_tree.tt';
+    $c->stash->{'_template'} = 'conf_objects_tree.tt';
     return;
 }
 
 ##########################################################
 sub _object_tree_objects {
-    my($self, $c) = @_;
+    my($c) = @_;
 
     my $type     = $c->{'request'}->{'parameters'}->{'type'}     || '';
     my $template = $c->{'request'}->{'parameters'}->{'template'};
@@ -2218,32 +2197,31 @@ sub _object_tree_objects {
     }
 
     my $all_files  = $c->{'obj_db'}->get_files();
-    my $files_tree = $self->_files_to_path($c, $all_files);
+    my $files_tree = _files_to_path($c, $all_files);
     my $files_root = $files_tree->{'path'};
     $c->stash->{'files_tree'} = $files_tree;
     $c->stash->{'files_root'} = $files_root;
 
-    $c->stash->{'objects'}  = $objs;
-    $c->stash->{'template'} = 'conf_objects_tree_objects.tt';
+    $c->stash->{'objects'}   = $objs;
+    $c->stash->{'_template'} = 'conf_objects_tree_objects.tt';
     return;
 }
 
 ##########################################################
 sub _host_list_services {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     my $services = $c->{'obj_db'}->get_services_for_host($obj);
-    $c->stash->{'services'} = $services ;
-
-    $c->stash->{'template'} = 'conf_objects_host_list_services.tt';
+    $c->stash->{'services'}  = $services ;
+    $c->stash->{'_template'} = 'conf_objects_host_list_services.tt';
     return;
 }
 
 ##########################################################
 sub _list_references {
-    my($self, $c, $obj) = @_;
-    $self->_gather_references($c, $obj);
-    $c->stash->{'template'} = 'conf_objects_listref.tt';
+    my($c, $obj) = @_;
+    _gather_references($c, $obj);
+    $c->stash->{'_template'} = 'conf_objects_listref.tt';
     return;
 }
 
@@ -2359,7 +2337,7 @@ sub _nice_addon_name {
 
 ##########################################################
 sub _gather_references {
-    my($self, $c, $obj) = @_;
+    my($c, $obj) = @_;
 
     #&timing_breakpoint('_gather_references');
 
@@ -2389,7 +2367,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

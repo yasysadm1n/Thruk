@@ -20,7 +20,7 @@
 
       [% SET lasthost = '' %]
 
-      [% FOREACH s = data %]
+      [% FOREACH s = _data %]
       [% IF loop.even; serviceclass = 'statusOdd'; ELSE; serviceclass = 'statusEven'; END %]
       [% IF s.has_been_checked == 0 %]
         [% state = 'PENDING' %]
@@ -148,7 +148,7 @@
 
     </table>
 
-    [% IF data.size == 0 && num_hosts > 0 %]
+    [% IF _data.size == 0 && num_hosts > 0 %]
       <div style="text-align: center;">
       <a href="[% uri_with(c, 'style' => 'hostdetail') %]" style="color: red;">
       Found 0 matching services, but there

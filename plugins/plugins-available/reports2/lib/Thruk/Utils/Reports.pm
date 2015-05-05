@@ -86,7 +86,7 @@ sub report_show {
     }
 
     if(defined $report_file and -f $report_file) {
-        $c->stash->{'template'} = 'passthrough.tt';
+        $c->stash->{'_template'} = 'passthrough.tt';
         if($c->{'request'}->{'parameters'}->{'html'}) {
             my $html_file   = $c->config->{'tmp_path'}.'/reports/'.$nr.'.html';
             if(!-e $html_file) {
@@ -94,7 +94,7 @@ sub report_show {
             }
             my $report_text = decode_utf8(read_file($html_file));
             $report_text    =~ s/^<body>/<body class="preview">/mx;
-            $c->stash->{'text'} = $report_text;
+            $c->stash->{'_text'} = $report_text;
         }
         elsif($report->{'var'}->{'attachment'} && (!$report->{'var'}->{'ctype'} or $report->{'var'}->{'ctype'} ne 'html2pdf')) {
             my $name = $report->{'var'}->{'attachment'};

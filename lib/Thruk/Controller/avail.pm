@@ -3,7 +3,7 @@ package Thruk::Controller::avail;
 use strict;
 use warnings;
 use Module::Load qw/load/;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -23,8 +23,10 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     if(!$c->config->{'avail_modules_loaded'}) {
         load Monitoring::Availability;
@@ -71,24 +73,24 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 
     # Step 2 - select specific host/service/group
-    if($report_type and $self->_show_step_2($c, $report_type)) {
+    if($report_type and _show_step_2($c, $report_type)) {
     }
 
     # Step 3 - select date parts
-    elsif(exists $c->{'request'}->{'parameters'}->{'get_date_parts'} and $self->_show_step_3($c)) {
+    elsif(exists $c->{'request'}->{'parameters'}->{'get_date_parts'} and _show_step_3($c)) {
     }
 
     # Step 4 - create report
     elsif(!$report_type
        and ($host or $service or $servicegroup or $hostgroup)
-       and $self->_create_report($c)) {
+       and _create_report($c)) {
     }
 
 
 
     # Step 1 - select report type
     else {
-        $self->_show_step_1($c);
+        _show_step_1($c);
     }
 
     return 1;
@@ -96,10 +98,10 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 ##########################################################
 sub _show_step_1 {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
     $c->stats->profile(begin => "_show_step_1()");
-    $c->stash->{template} = 'avail_step_1.tt';
+    $c->stash->{_template} = 'avail_step_1.tt';
     $c->stats->profile(end => "_show_step_1()");
 
     return 1;
@@ -108,7 +110,7 @@ sub _show_step_1 {
 
 ##########################################################
 sub _show_step_2 {
-    my ( $self, $c, $report_type ) = @_;
+    my ( $c, $report_type ) = @_;
 
     $c->stats->profile(begin => "_show_step_2($report_type)");
 
@@ -134,8 +136,8 @@ sub _show_step_2 {
         return 0;
     }
 
-    $c->stash->{data}        = $data;
-    $c->stash->{template}    = 'avail_step_2.tt';
+    $c->stash->{_data}     = $data;
+    $c->stash->{_template} = 'avail_step_2.tt';
 
     $c->stats->profile(end => "_show_step_2($report_type)");
 
@@ -144,12 +146,12 @@ sub _show_step_2 {
 
 ##########################################################
 sub _show_step_3 {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
     $c->stats->profile(begin => "_show_step_3()");
 
     $c->stash->{timeperiods} = $c->{'db'}->get_timeperiods(filter => [Thruk::Utils::Auth::get_auth_filter($c, 'timeperiods')], remove_duplicates => 1, sort => 'name');
-    $c->stash->{template}    = 'avail_step_3.tt';
+    $c->stash->{_template}   = 'avail_step_3.tt';
 
     my($host,$service);
     $service = $c->{'request'}->{'parameters'}->{'service'};
@@ -167,7 +169,7 @@ sub _show_step_3 {
 
 ##########################################################
 sub _create_report {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
     $c->{'request'}->{'parameters'}->{'include_host_services'} = 1;
     return Thruk::Utils::External::perl($c, { expr => 'Thruk::Utils::Avail::calculate_availability($c)', message => 'please stand by while your report is being generated...' });
 }
@@ -182,7 +184,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

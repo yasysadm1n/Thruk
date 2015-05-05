@@ -1709,7 +1709,7 @@ sub _page_data {
 
     # set some defaults
     $c->stash->{'pager'} = "";
-    $c->stash->{'data'}  = $data;
+    $c->stash->{'_data'} = $data;
 
     # page only in html mode
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
@@ -1736,7 +1736,7 @@ sub _page_data {
         $pages = POSIX::ceil( $pager->total_entries / $entries );
     }
     else {
-        $c->stash->{'data'} = $data;
+        $c->stash->{'_data'} = $data;
         return $data;
     }
 
@@ -1793,13 +1793,13 @@ sub _page_data {
     $c->stash->{'current_page'} = $page;
 
     if( $entries eq 'all' ) {
-        $c->stash->{'data'} = $data;
+        $c->stash->{'_data'} = $data;
     }
     else {
         $pager->entries_per_page($entries);
         $pager->current_page($page);
         my @data = $pager->splice($data);
-        $c->stash->{'data'} = \@data;
+        $c->stash->{'_data'} = \@data;
     }
 
     $c->stash->{'pager'} = $pager;

@@ -25,7 +25,7 @@
         </td>
         <td class='reportSelectItem' valign="center">
           <select name='[% IF input == 'gethost' %]host[% ELSIF input == 'getservice' %]service[% END %]'>
-            [% FOR d = data %]
+            [% FOR d = _data %]
             <option value='[% d %]'>[% d %]</option>
 
             [% END %]

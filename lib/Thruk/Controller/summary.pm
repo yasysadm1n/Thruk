@@ -2,7 +2,7 @@ package Thruk::Controller::summary;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -56,8 +56,10 @@ use constant {
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     # set defaults
     $c->stash->{title}            = 'Event Summary';
@@ -68,12 +70,12 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     Thruk::Utils::ssi_include($c);
 
     if(exists $c->{'request'}->{'parameters'}->{'report'}
-       and $self->_create_report($c)) {
+       and _create_report($c)) {
         # report created
     }
     else {
         # Step 1 - select report type
-        $self->_show_step_1($c);
+        _show_step_1($c);
     }
 
     return 1;
@@ -81,13 +83,13 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 ##########################################################
 sub _show_step_1 {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
     $c->stats->profile(begin => "_show_step_1()");
 
     $c->stash->{hosts}         = $c->{'db'}->get_host_names(filter => [ Thruk::Utils::Auth::get_auth_filter($c, 'hosts') ]);
     $c->stash->{hostgroups}    = $c->{'db'}->get_hostgroup_names_from_hosts( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'hosts' ) ] );
     $c->stash->{servicegroups} = $c->{'db'}->get_servicegroup_names_from_services( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'services' ) ] );
-    $c->stash->{template}      = 'summary_step_1.tt';
+    $c->stash->{_template}     = 'summary_step_1.tt';
 
     $c->stats->profile(end => "_show_step_1()");
     return 1;
@@ -95,7 +97,7 @@ sub _show_step_1 {
 
 ##########################################################
 sub _create_report {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
     $c->stats->profile(begin => "_create_report()");
 
     my($displaytype, $alerttypes, $hoststates, $servicestates);
@@ -151,7 +153,7 @@ sub _create_report {
     $c->stash->{timeperiod} = $c->{'request'}->{'parameters'}->{'timeperiod'};
 
     # get filter from parameters
-    my($hostfilter, $servicefilter) = $self->_get_filter($c);
+    my($hostfilter, $servicefilter) = _get_filter($c);
 
     unshift @{$hostfilter}, { time => { '<=' => $end }};
     unshift @{$hostfilter}, { time => { '>=' => $start }};
@@ -159,17 +161,17 @@ sub _create_report {
     unshift @{$servicefilter}, { time => { '<=' => $end }};
     unshift @{$servicefilter}, { time => { '>=' => $start }};
 
-    my $alertlogs = $self->_get_alerts_from_log($c, $hostfilter, $servicefilter);
+    my $alertlogs = _get_alerts_from_log($c, $hostfilter, $servicefilter);
 
     if($displaytype == REPORT_RECENT_ALERTS) {
         $c->stash->{report_title}    = 'Most Recent Alerts';
         $c->stash->{report_template} = 'summary_report_recent_alerts.tt';
-        $self->_display_recent_alerts($c, $alertlogs);
+        _display_recent_alerts($c, $alertlogs);
     }
     elsif($displaytype == REPORT_TOP_ALERTS) {
         $c->stash->{report_title}    = 'Top Alert Producers';
         $c->stash->{report_template} = 'summary_report_alert_producer.tt';
-        $self->_display_top_alerts($c, $alertlogs);
+        _display_top_alerts($c, $alertlogs);
     }
     elsif(   $displaytype == REPORT_ALERT_TOTALS
           or $displaytype == REPORT_HOSTGROUP_ALERT_TOTALS
@@ -179,14 +181,14 @@ sub _create_report {
          ) {
         $c->stash->{report_title}    = 'Alert Totals';
         $c->stash->{report_template} = 'summary_report_alert_totals.tt';
-        $self->_display_alert_totals($c, $alertlogs, $displaytype);
+        _display_alert_totals($c, $alertlogs, $displaytype);
     }
     else {
         return;
     }
 
-    $c->stash->{template} = 'summary_report.tt';
-    $c->stash->{limit}    = $c->{'request'}->{'parameters'}->{'limit'};
+    $c->stash->{_template} = 'summary_report.tt';
+    $c->stash->{limit}     = $c->{'request'}->{'parameters'}->{'limit'};
 
     $c->stats->profile(end => "_create_report()");
     return 1;
@@ -195,7 +197,7 @@ sub _create_report {
 ##########################################################
 # Most Recent Alerts
 sub _display_recent_alerts {
-    my ( $self, $c, $alerts ) = @_;
+    my ( $c, $alerts ) = @_;
     $c->stats->profile(begin => "_display_recent_alerts()");
 
     my $sortedtotals = Thruk::Backend::Manager::_sort($c, $alerts, { 'DESC' => 'time'});
@@ -208,7 +210,7 @@ sub _display_recent_alerts {
 ##########################################################
 # Top Alert Producers
 sub _display_top_alerts {
-    my ( $self, $c, $alerts ) = @_;
+    my ( $c, $alerts ) = @_;
     $c->stats->profile(begin => "_display_top_alerts()");
 
     my $totals = {};
@@ -237,7 +239,7 @@ sub _display_top_alerts {
 ##########################################################
 # Alert Totals
 sub _display_alert_totals {
-    my ( $self, $c, $alerts, $displaytype ) = @_;
+    my ( $c, $alerts, $displaytype ) = @_;
     $c->stats->profile(begin => "_display_alert_totals()");
 
     # set overall title
@@ -368,7 +370,7 @@ sub _display_alert_totals {
 
 ##########################################################
 sub _get_alerts_from_log {
-    my ( $self, $c, $hostfilter, $servicefilter ) = @_;
+    my ( $c, $hostfilter, $servicefilter ) = @_;
 
     my($hostlogs, $servicelogs);
 
@@ -397,19 +399,19 @@ sub _get_alerts_from_log {
 
 ##########################################################
 sub _get_filter {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my(@hostfilter, @servicefilter);
 
     # host state filter
     my($hoststatusfiltername,$hoststatusfilter)
-        = $self->_get_host_statustype_filter($c->{'request'}->{'parameters'}->{'hoststates'});
+        = _get_host_statustype_filter($c->{'request'}->{'parameters'}->{'hoststates'});
     $c->stash->{hoststatusfilter} = $hoststatusfiltername;
     push @hostfilter, $hoststatusfilter if $hoststatusfilter;
 
     # service state filter
     my($servicestatusfiltername,$servicestatusfilter)
-        = $self->_get_service_statustype_filter($c->{'request'}->{'parameters'}->{'servicestates'});
+        = _get_service_statustype_filter($c->{'request'}->{'parameters'}->{'servicestates'});
     $c->stash->{servicestatusfilter} = $servicestatusfiltername;
     push @servicefilter, $servicestatusfilter if $servicestatusfilter;
 
@@ -480,7 +482,7 @@ sub _get_filter {
 
 ##########################################################
 sub _get_host_statustype_filter {
-    my ( $self, $number ) = @_;
+    my ( $number ) = @_;
 
     $number = 7 if !defined $number or $number <= 0 or $number > 7;
     my $hoststatusfiltername = 'All';
@@ -509,7 +511,7 @@ sub _get_host_statustype_filter {
 
 ##########################################################
 sub _get_service_statustype_filter {
-    my ( $self, $number ) = @_;
+    my ( $number ) = @_;
 
     $number = 120 if !defined $number or $number <= 0 or $number > 120;
     my $servicestatusfiltername = 'All';
@@ -552,7 +554,5 @@ This library is free software. You can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

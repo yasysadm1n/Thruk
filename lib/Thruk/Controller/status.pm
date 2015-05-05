@@ -2,27 +2,27 @@ package Thruk::Controller::status;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::status - Catalyst Controller
+Thruk::Controller::status - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
-
-=cut
 
 =head2 index
 
 =cut
 
 ##########################################################
-sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
-    my( $self, $c ) = @_;
+sub index {
+    my($c) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
 
     # which style to display?
     my $allowed_subpages = {
@@ -48,25 +48,23 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
     }
 
     if(defined $c->{'request'}->{'parameters'}->{'addb'} or defined $c->{'request'}->{'parameters'}->{'saveb'}) {
-        return $self->_process_bookmarks($c);
+        return _process_bookmarks($c);
     }
 
     if(defined $c->{'request'}->{'parameters'}->{'verify'} and $c->{'request'}->{'parameters'}->{'verify'} eq 'time') {
-        return $self->_process_verify_time($c);
+        return _process_verify_time($c);
     }
 
     if($c->{'request'}->{'parameters'}->{'serveraction'}) {
         my($rc, $msg) = Thruk::Utils::Status::serveraction($c);
         my $json = { 'rc' => $rc, 'msg' => $msg };
-        $c->stash->{'json'} = $json;
-        return $c->forward('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
     if($c->{'request'}->{'parameters'}->{'replacemacros'}) {
-        my($rc, $data) = $self->_replacemacros($c);
+        my($rc, $data) = _replacemacros($c);
         my $json = { 'rc' => $rc, 'data' => $data };
-        $c->stash->{'json'} = $json;
-        return $c->forward('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
     # set some defaults
@@ -76,7 +74,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
 
     # did we get a search request?
     if( defined $c->{'request'}->{'parameters'}->{'navbarsearch'} and $c->{'request'}->{'parameters'}->{'navbarsearch'} eq '1' ) {
-        $style = $self->_process_search_request($c);
+        $style = _process_search_request($c);
     }
 
     $c->stash->{title}         = 'Current Network Status';
@@ -104,39 +102,39 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
     # raw data request?
     $c->stash->{'output_format'} = $c->{'request'}->{'parameters'}->{'format'} || 'html';
     if( $c->stash->{'output_format'} ne 'html' ) {
-        $self->_process_raw_request($c);
+        _process_raw_request($c);
         return 1;
     }
 
     # normal pages
     elsif ( $style eq 'detail' ) {
         $c->stash->{substyle} = 'service';
-        $self->_process_details_page($c);
+        _process_details_page($c);
     }
     elsif ( $style eq 'hostdetail' ) {
-        $self->_process_hostdetails_page($c);
+        _process_hostdetails_page($c);
     }
     elsif ( $style =~ m/overview$/mx ) {
         $style = 'overview';
-        $self->_process_overview_page($c);
+        _process_overview_page($c);
     }
     elsif ( $style =~ m/grid$/mx ) {
         $style = 'grid';
-        $self->_process_grid_page($c);
+        _process_grid_page($c);
     }
     elsif ( $style =~ m/summary$/mx ) {
         $style = 'summary';
-        $self->_process_summary_page($c);
+        _process_summary_page($c);
     }
     elsif ( $style eq 'combined' ) {
-        $self->_process_combined_page($c);
+        _process_combined_page($c);
     }
     elsif ( $style eq 'perfmap' ) {
         $c->stash->{substyle} = 'service';
-        $self->_process_perfmap_page($c);
+        _process_perfmap_page($c);
     }
 
-    $c->stash->{template} = 'status_' . $style . '.tt';
+    $c->stash->{_template} = 'status_' . $style . '.tt';
 
     Thruk::Utils::ssi_include($c);
 
@@ -146,7 +144,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
 ##########################################################
 # check for search results
 sub _process_raw_request {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     if( $c->stash->{'output_format'} eq 'search' ) {
         if( exists $c->{'request'}->{'parameters'}->{'type'} ) {
@@ -233,9 +231,7 @@ sub _process_raw_request {
                 for my $d (@{$c->stash->{'data'}}) { push @{$list}, { 'text' => $d } };
                 $json = { 'data' => $list, 'total' => $total };
             }
-            $c->stash->{'json'} = $json;
-            $c->forward('Thruk::View::JSON');
-            return;
+            return $c->render(json => $json);
         }
 
         my( $hostgroups, $servicegroups, $hosts, $services, $timeperiods );
@@ -262,9 +258,7 @@ sub _process_raw_request {
             $timeperiods = $c->{'db'}->get_timeperiod_names( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'timeperiods' ) ] );
             push @json, { 'name' => 'timeperiods', 'data' => $timeperiods };
         }
-        $c->stash->{'json'} = \@json;
-        $c->forward('Thruk::View::JSON');
-        return;
+        return $c->render(json => \@json);
     }
 
     # which host to display?
@@ -306,16 +300,13 @@ sub _process_raw_request {
     }
 
     my $hosts = $c->{'db'}->get_hosts( filter => [ Thruk::Utils::Auth::get_auth_filter( $c, 'hosts' ), $hostfilter ], columns => \@columns, limit => $limit );
-    $c->stash->{'json'} = $hosts;
-    $c->forward('Thruk::View::JSON');
-
-    return 1;
+    return $c->render(json => $hosts);
 }
 
 ##########################################################
 # check for search results
 sub _process_search_request {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     # search pattern is in host param
     my $host = $c->{'request'}->{'parameters'}->{'host'};
@@ -345,7 +336,7 @@ sub _process_search_request {
 ##########################################################
 # create the status details page
 sub _process_details_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
     $c->stash->{'minimal'} = 1 if $view_mode ne 'html';
@@ -411,8 +402,8 @@ sub _process_details_page {
     if( $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
         $c->res->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
-        $c->stash->{'data'}     = $services;
-        $c->stash->{'template'} = 'excel/status_detail.tt';
+        $c->stash->{'_data'}     = $services;
+        $c->stash->{'_template'} = 'excel/status_detail.tt';
         return $c->detach('View::Excel');
     }
     if ( $view_mode eq 'json' ) {
@@ -426,8 +417,7 @@ sub _process_details_page {
                 delete $s->{'state_order'}             unless $keep_state_order;
             }
         }
-        $c->stash->{'json'} = $services;
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $services);
     }
 
     $c->stash->{'orderby'}  = $sortoptions->{$sortoption}->[1];
@@ -438,7 +428,7 @@ sub _process_details_page {
        and defined $c->stash->{'host_stats'}->{'up'}
        and $c->stash->{'host_stats'}->{'up'} + $c->stash->{'host_stats'}->{'down'} + $c->stash->{'host_stats'}->{'unreachable'} + $c->stash->{'host_stats'}->{'pending'} == 1) {
         # set allowed custom vars into stash
-        Thruk::Utils::set_custom_vars($c, {'prefix' => 'host_', 'host' => $c->stash->{'data'}->[0]});
+        Thruk::Utils::set_custom_vars($c, {'prefix' => 'host_', 'host' => $c->stash->{'_data'}->[0]});
     }
 
     return 1;
@@ -447,7 +437,7 @@ sub _process_details_page {
 ##########################################################
 # create the hostdetails page
 sub _process_hostdetails_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
     $c->stash->{'minimal'} = 1 if $view_mode ne 'html';
@@ -497,8 +487,8 @@ sub _process_hostdetails_page {
         Thruk::Utils::Status::set_selected_columns($c);
         my $filename = 'status.xls';
         $c->res->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
-        $c->stash->{'data'}     = $hosts;
-        $c->stash->{'template'} = 'excel/status_hostdetail.tt';
+        $c->stash->{'_data'}     = $hosts;
+        $c->stash->{'_template'} = 'excel/status_hostdetail.tt';
         return $c->detach('View::Excel');
     }
     if ( $view_mode eq 'json' ) {
@@ -511,8 +501,7 @@ sub _process_hostdetails_page {
                 delete $h->{'last_state_change_order'} unless $keep_last_state;
             }
         }
-        $c->stash->{'json'} = $hosts;
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $hosts);
     }
 
     $c->stash->{'orderby'}            = $sortoptions->{$sortoption}->[1];
@@ -525,7 +514,7 @@ sub _process_hostdetails_page {
 ##########################################################
 # create the status details page
 sub _process_overview_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     $c->stash->{'columns'} = $c->{'request'}->{'parameters'}->{'columns'} || 3;
 
@@ -665,7 +654,7 @@ sub _process_overview_page {
 ##########################################################
 # create the status grid page
 sub _process_grid_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     die("no substyle!") unless defined $c->stash->{substyle};
 
@@ -760,7 +749,7 @@ sub _process_grid_page {
 ##########################################################
 # create the status summary page
 sub _process_summary_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     die("no substyle!") unless defined $c->stash->{substyle};
 
@@ -906,7 +895,7 @@ sub _process_summary_page {
 ##########################################################
 # create the status details page
 sub _process_combined_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     $c->stash->{hidetop}    = 1 unless $c->stash->{hidetop} ne '';
     $c->stash->{hidesearch} = 1;
@@ -974,17 +963,17 @@ sub _process_combined_page {
     if( $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
         $c->res->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
-        $c->stash->{'hosts'}    = $hosts;
-        $c->stash->{'services'} = $services;
-        $c->stash->{'template'} = 'excel/status_combined.tt';
+        $c->stash->{'hosts'}     = $hosts;
+        $c->stash->{'services'}  = $services;
+        $c->stash->{'_template'} = 'excel/status_combined.tt';
         return $c->detach('View::Excel');
     }
     if ( $view_mode eq 'json' ) {
-        $c->stash->{'json'} = {
+        my $json = {
             'hosts'    => $hosts,
             'services' => $services,
         };
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $json);
     }
 
     # set audio file to play
@@ -996,7 +985,7 @@ sub _process_combined_page {
 ##########################################################
 # create the perfmap details page
 sub _process_perfmap_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $view_mode = $c->{'request'}->{'parameters'}->{'view_mode'} || 'html';
 
@@ -1045,12 +1034,12 @@ sub _process_perfmap_page {
         $c->stash->{'last_col'} = chr(65+(scalar keys %{$keys})-1);
         my $filename = 'performancedata.xls';
         $c->res->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
-        $c->stash->{'name'}     = 'Performance';
-        $c->stash->{'data'}     = $data;
-        $c->stash->{'col_sel'}  = $c->stash->{'columns'};
-        $c->stash->{'col_tr'}   = { 'host_name' => 'Hostname', 'description' => 'Service' };
-        $c->stash->{'columns'}  = ['host_name', 'description', sort keys %{$keys}];
-        $c->stash->{'template'} = 'excel/generic.tt';
+        $c->stash->{'name'}      = 'Performance';
+        $c->stash->{'_data'}     = $data;
+        $c->stash->{'col_sel'}   = $c->stash->{'columns'};
+        $c->stash->{'col_tr'}    = { 'host_name' => 'Hostname', 'description' => 'Service' };
+        $c->stash->{'columns'}   = ['host_name', 'description', sort keys %{$keys}];
+        $c->stash->{'_template'} = 'excel/generic.tt';
         return $c->detach('View::Excel');
     }
     if ( $view_mode eq 'json' ) {
@@ -1063,8 +1052,7 @@ sub _process_perfmap_page {
                 delete $d->{$k.'_sort'};
             }
         }
-        $c->stash->{'json'} = $data;
-        return $c->detach('Thruk::View::JSON');
+        return $c->render(json => $data);
     }
 
     # sort things?
@@ -1089,7 +1077,7 @@ sub _process_perfmap_page {
 ##########################################################
 # store bookmarks and redirect to last page
 sub _process_bookmarks {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $referer    = $c->{'request'}->{'parameters'}->{'referer'} || 'status.cgi';
     my $bookmark   = $c->{'request'}->{'parameters'}->{'bookmark'};
@@ -1204,7 +1192,7 @@ sub _process_bookmarks {
 ##########################################################
 # check for search results
 sub _process_verify_time {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $verified = 'false';
     my $error    = 'not a valid date';
@@ -1224,16 +1212,14 @@ sub _process_verify_time {
     }
 
     my $json = { 'verified' => $verified, 'error' => $error };
-    $c->stash->{'json'} = $json;
-    $c->forward('Thruk::Thruk::View::JSON');
-    return;
+    return $c->render(json => $json);
 }
 
 
 ##########################################################
 # replace macros in given string for a host/service
 sub _replacemacros {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     return(1, 'invalid request') unless Thruk::Utils::check_csrf($c);
 
@@ -1268,7 +1254,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

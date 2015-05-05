@@ -15,7 +15,7 @@
     <th class='data'>Action URL</th>
   </tr>
 
-  [% FOREACH d = data %]
+  [% FOREACH d = _data %]
   [% SET class = 'dataOdd'  IF loop.even %]
   [% SET class = 'dataEven' IF loop.odd %]
   [% SET class = 'tableRowHover' IF jump == d.name %]

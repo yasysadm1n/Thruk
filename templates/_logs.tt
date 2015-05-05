@@ -14,7 +14,7 @@
 </tr></table>
 
 [% SET last_hour = '' %]
-[% FOREACH l = data %]
+[% FOREACH l = _data %]
 [% this_hour = format_date(l.time, '%Y-%m-%d  %H') _ ':00' %]
 [% IF this_hour != last_hour %]
   [% SET last_hour = this_hour %]
@@ -31,6 +31,6 @@
 
 <div align="center">[% PROCESS _pager.tt %]</div>
 
-[% IF data.size and data.size > 0 %]</div>[% END %]
+[% IF _data.size and _data.size > 0 %]</div>[% END %]
 <hr>
-<div class="itemTotalsTitle">[% IF data.size %][% data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Log Entries Displayed</div>
+<div class="itemTotalsTitle">[% IF _data.size %][% _data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Log Entries Displayed</div>

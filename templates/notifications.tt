@@ -129,7 +129,7 @@
           <th class='notifications'>Information</th>
         </tr>
 
-        [% FOREACH n = data %]
+        [% FOREACH n = _data %]
         [% SET class = 'notificationsOdd'  IF loop.even %]
         [% SET class = 'notificationsEven' IF loop.odd %]
         [% PROCESS _notifications_log_line.tt %]
@@ -155,7 +155,7 @@
 
 <div align="center">[% PROCESS _pager.tt %]</div>
 
-[% IF data.size == 0 %]
+[% IF _data.size == 0 %]
 <br><div class='errorMessage'>
 [% IF contact != '' %]
   No notifications have been recorded for this contact in the current timeperiod
@@ -167,6 +167,6 @@
 </div>
 [% END %]
 
-<div class="itemTotalsTitle">[% IF data.size %][% data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Notifications Displayed</div>
+<div class="itemTotalsTitle">[% IF _data.size %][% _data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Notifications Displayed</div>
 
 [% PROCESS _footer.tt %]

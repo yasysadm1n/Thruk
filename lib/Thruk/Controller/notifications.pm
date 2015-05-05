@@ -2,7 +2,7 @@ package Thruk::Controller::notifications;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -22,8 +22,10 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     my($start,$end);
     my $timeframe = 86400;
@@ -36,7 +38,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     my $service     = $c->{'request'}->{'parameters'}->{'service'}     || '';
     my $oldestfirst = $c->{'request'}->{'parameters'}->{'oldestfirst'} || 0;
 
-    push @{$filter}, $self->_get_log_prop_filter($type);
+    push @{$filter}, _get_log_prop_filter($type);
 
     my $param_start = $c->{'request'}->{'parameters'}->{'start'};
     my $param_end   = $c->{'request'}->{'parameters'}->{'end'};
@@ -101,7 +103,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 
     if( defined $c->{'request'}->{'parameters'}->{'view_mode'} and $c->{'request'}->{'parameters'}->{'view_mode'} eq 'xls' ) {
-        $c->stash->{'template'}   = 'excel/notifications.tt';
+        $c->stash->{'_template'}  = 'excel/notifications.tt';
         $c->stash->{'file_name'}  = 'notifications.xls';
         $c->stash->{'log_filter'} = { filter => [$total_filter, Thruk::Utils::Auth::get_auth_filter($c, 'log')],
                                       sort   => {$order => 'time'},
@@ -127,7 +129,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
     $c->stash->{contact}          = $contact;
     $c->stash->{title}            = 'Alert Notifications';
     $c->stash->{page}             = 'notifications';
-    $c->stash->{template}         = 'notifications.tt';
+    $c->stash->{_template}        = 'notifications.tt';
     $c->stash->{'no_auto_reload'} = 1;
 
     Thruk::Utils::ssi_include($c);
@@ -138,7 +140,7 @@ sub index :Path :Args(0) :MyAction('AddDefaults') {
 
 ##########################################################
 sub _get_log_prop_filter {
-    my ( $self, $number ) = @_;
+    my ( $number ) = @_;
 
     $number = 0 if !defined $number or $number <= 0 or $number > 32767;
     my @prop_filter;
@@ -204,7 +206,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

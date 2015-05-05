@@ -26,7 +26,11 @@ test_page() {
   page=$(echo "$pageres" | grep 'Requests per second:' | awk '{ print $4 }')
   pageerr=$(echo "$pageres" | grep 'Non-2xx responses:' | awk '{ print $3 }')
   if [ "$pageerr" != "" ]; then if [ $pageerr -gt 5 ]; then page='err'; fi; fi
-  printf "     %s: %5s #/sec" "$NAME" "$page"
+  if [ "$page" = "err" ]; then
+    printf "errored           | "
+  else
+    printf "%6s #/sec      | " "$page"
+  fi
 }
 
 #################################################
@@ -34,7 +38,7 @@ switch_tag() {
   TAG="$1"
   git=$(git checkout $TAG 2>&1 || echo -n)
   if [[ $git == *error:* ]]; then
-    printf "\n$git"
+    printf "\n| $git "
     exit
   fi
   rm -rf tmp/ttc_*
@@ -43,18 +47,23 @@ switch_tag() {
 #################################################
 test_tag() {
   TAG="$1"
-  printf "%-14s" "$TAG"
+  printf "| %-13s | " "$TAG"
   switch_tag "$TAG"
   pid=$(./script/thruk_server.pl >/dev/null 2>&1 & echo $!);
 
+  START=$(date +%s.%N)
   while [ $(lsof -i:$BASEPORT | grep -c LISTEN) -ne 1 ]; do
-    sleep 0.5
+    sleep 0.1
     ps -p $pid >/dev/null 2>&1 || { echo "failed to start!"; exit; }
   done
+  END=$(date +%s.%N)
+  STARTUP=$(echo $END-$START|bc)
+  printf " %.2fs  | " "$(echo $END-$START|bc)"
 
   # warm up
   ab -c $CONCURRENCY -n 10 "$BASEURL/cgi-bin/tac.cgi" > /dev/null 2>&1
 
+  test_page 'main'   "$BASEURL/main.html"
   test_page 'tac'    "$BASEURL/cgi-bin/tac.cgi"
   test_page 'status' "$BASEURL/cgi-bin/status.cgi"
   mem=$(cat /proc/$pid/status | grep VmRSS:  | awk '{print $2}')
@@ -65,7 +74,7 @@ test_tag() {
   load=$(cat /proc/loadavg | awk '{ print $1 }')
 
   kill $pid
-  printf "     mem: %3d MB (max. %4dMB)     load: %5s\n" $(echo $mem/1000|bc) $(echo $max/1000|bc) "$load"
+  printf " %3d MB (max. %4dMB) | %5s |\n" $(echo $mem/1000|bc) $(echo $max/1000|bc) "$load"
 }
 
 #################################################
@@ -76,6 +85,8 @@ test -f .author && echo "WARNING: .author mode active";
 
 #################################################
 # run tests
+echo "| Branch        | Startup | Main HTML         | Tactical CGI      | Status CGI        | JSON CGI          | Business P. CGI   | Memory                | LOAD  |";
+echo "+---------------+---------+-------------------+-------------------+-------------------+-------------------+-------------------+-----------------------+-------+";
 branch=$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
 if [ "x$*" = "x" ]; then
   tags=$(git tag -l | awk -F- '{ print $1 }' | sort -u | tail -$NUM | tac)
@@ -91,6 +102,7 @@ for tag in $tags; do
   fi
   test_tag "$tag"
 done
+echo "+---------------+---------+-------------------+-------------------+-------------------+-------------------+-------------------+-----------------------+-------+";
 
 #################################################
 # clean up

@@ -43,7 +43,7 @@ sub set_default_stash {
     $c->stash->{'servicegroup'}         = $c->{'request'}->{'parameters'}->{'servicegroup'}       || '';
     $c->stash->{'host'}                 = $c->{'request'}->{'parameters'}->{'host'}               || '';
     $c->stash->{'service'}              = $c->{'request'}->{'parameters'}->{'service'}            || '';
-    $c->stash->{'data'}                 = '';
+    $c->stash->{'_data'}                = '';
     $c->stash->{'style'}                = '';
     $c->stash->{'has_error'}            = 0;
     $c->stash->{'pager'}                = '';

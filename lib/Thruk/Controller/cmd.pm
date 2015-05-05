@@ -2,8 +2,8 @@ package Thruk::Controller::cmd;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
 use Data::Dumper;
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -22,8 +22,11 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
-    my( $self, $c ) = @_;
+sub index {
+    my( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
+
     my $errors = 0;
 
     $c->stash->{'now'}               = time();
@@ -64,7 +67,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
         $query_options = { Slice => 1, Backend => [$backend] };
     }
 
-    $self->_set_host_service_from_down_com_ids($c);
+    _set_host_service_from_down_com_ids($c);
 
     my $host_quick_commands = {
         1  => 96,    # reschedule host check
@@ -106,7 +109,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
         $c->{'request'}->{'parameters'}->{'cmd_typ'} = 'c'.$quick_command;
         delete $c->{'request'}->{'parameters'}->{'cmd_mod'};
         $c->stash->{'cmd_typ'} = 'c'.$quick_command;
-        $self->_check_for_commands($c);
+        _check_for_commands($c);
     }
     elsif( defined $quick_command and $quick_command or $c->stash->{'cmd_typ'} =~ m/^c(\d+)$/mx ) {
         if(defined $1) {
@@ -135,7 +138,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
         my @hostdata    = split /,/mx, $c->{'request'}->{'parameters'}->{'selected_hosts'};
         my @servicedata = split /,/mx, $c->{'request'}->{'parameters'}->{'selected_services'};
         my @idsdata     = split /,/mx, $c->{'request'}->{'parameters'}->{'selected_ids'};
-        $self->{'spread_startdates'} = $self->_generate_spread_startdates( $c, scalar @hostdata + scalar @servicedata, $c->request->parameters->{'start_time'}, $c->request->parameters->{'spread'} );
+        $c->{'spread_startdates'} = _generate_spread_startdates( $c, scalar @hostdata + scalar @servicedata, $c->request->parameters->{'start_time'}, $c->request->parameters->{'spread'} );
 
         # persistent can be set in two ways
         if(    $c->{'request'}->{'parameters'}->{'persistent'} eq 'ack'
@@ -169,8 +172,8 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
             } elsif($quick_command == 13 ) {
                 $c->{'request'}->{'parameters'}->{'com_id'}  = $id;
             }
-            $self->_set_host_service_from_down_com_ids($c);
-            if( $self->_do_send_command($c) ) {
+            _set_host_service_from_down_com_ids($c);
+            if( _do_send_command($c) ) {
                 $c->log->debug("command succeeded");
             }
             else {
@@ -196,14 +199,14 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
             $c->{'request'}->{'parameters'}->{'backend'} = \@backends;
             if( $quick_command == 5 ) {
                 if($c->{'request'}->{'parameters'}->{'active_downtimes'}) {
-                    $self->_remove_all_downtimes( $c, $host, undef, 'active' );
+                    _remove_all_downtimes( $c, $host, undef, 'active' );
                 }
                 if($c->{'request'}->{'parameters'}->{'future_downtimes'}) {
-                    $self->_remove_all_downtimes( $c, $host, undef, 'future' );
+                    _remove_all_downtimes( $c, $host, undef, 'future' );
                 }
             }
             else {
-                if( $self->_do_send_command($c) ) {
+                if( _do_send_command($c) ) {
                     $c->log->debug("command for host $host succeeded");
                 }
                 else {
@@ -233,14 +236,14 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
             $c->{'request'}->{'parameters'}->{'backend'} = \@backends;
             if( $quick_command == 5 ) {
                 if($c->{'request'}->{'parameters'}->{'active_downtimes'}) {
-                    $self->_remove_all_downtimes( $c, $host, $service, 'active' );
+                    _remove_all_downtimes( $c, $host, $service, 'active' );
                 }
                 if($c->{'request'}->{'parameters'}->{'future_downtimes'}) {
-                    $self->_remove_all_downtimes( $c, $host, $service, 'future' );
+                    _remove_all_downtimes( $c, $host, $service, 'future' );
                 }
             }
             else {
-                if( $self->_do_send_command($c) ) {
+                if( _do_send_command($c) ) {
                     $c->log->debug("command for $service on host $host succeeded");
                 }
                 else {
@@ -259,12 +262,12 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
 
     # normal page call
     else {
-        $self->_check_for_commands($c);
+        _check_for_commands($c);
     }
 
     if($c->{'request'}->{'parameters'}->{'json'} and $c->stash->{'form_errors'}) {
-        $c->stash->{'json'} = {'success' => 0, errors => $c->stash->{'form_errors'} };
-        return $c->detach('Thruk::View::JSON');
+        my $json = {'success' => 0, errors => $c->stash->{'form_errors'} };
+        return $c->render(json => $json);
     }
 
     return 1;
@@ -273,7 +276,7 @@ sub index : Path : Args(0) : MyAction('AddCachedDefaults') {
 ######################################
 # remove downtimes
 sub _remove_all_downtimes {
-    my( $self, $c, $host, $service, $type ) = @_;
+    my( $c, $host, $service, $type ) = @_;
 
     my $backends = $c->{'request'}->{'parameters'}->{'backend'};
 
@@ -296,7 +299,7 @@ sub _remove_all_downtimes {
     my @ids     = keys %{Thruk::Utils::array2hash($data, 'id')};
     for my $id ( @ids ) {
         $c->{'request'}->{'parameters'}->{'down_id'} = $id;
-        if( $self->_do_send_command($c) ) {
+        if( _do_send_command($c) ) {
             $c->log->debug("removing downtime $id succeeded");
             Thruk::Utils::set_message( $c, 'success_message', "removing downtime $id succeeded" );
         }
@@ -313,7 +316,7 @@ sub _remove_all_downtimes {
 ######################################
 # command disabled by config?
 sub _check_for_commands {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     my $cmd_typ = $c->{'request'}->{'parameters'}->{'cmd_typ'};
     my $cmd_mod = $c->{'request'}->{'parameters'}->{'cmd_mod'} || 0;
@@ -325,7 +328,7 @@ sub _check_for_commands {
 
     # command commited?
     $c->stash->{'use_csrf'} = 1;
-    if( $cmd_mod == 2 and $self->_do_send_command($c) ) {
+    if( $cmd_mod == 2 and _do_send_command($c) ) {
         Thruk::Utils::set_message( $c, 'success_message', 'Commands successfully submitted' );
         _redirect_or_success( $c, -2 );
     }
@@ -342,7 +345,7 @@ sub _check_for_commands {
         $comment_author = $c->user->alias if defined $c->user->alias;
         $c->stash->{comment_author} = $comment_author;
         $c->stash->{cmd_tt}         = 'cmd.tt';
-        $c->stash->{template}       = 'cmd/cmd_typ_' . $cmd_typ . '.tt';
+        $c->stash->{_template}      = 'cmd/cmd_typ_' . $cmd_typ . '.tt';
 
         # set a valid referer
         my $referer = $c->{'request'}->{'parameters'}->{'referer'} || $c->{'request'}->{'headers'}->{'referer'} || '';
@@ -480,8 +483,8 @@ sub _redirect_or_success {
 
         return if $just_return;
         if($c->{'request'}->{'parameters'}->{'json'}) {
-            $c->stash->{'json'} = {'success' => 1};
-            return $c->detach('Thruk::View::JSON');
+            my $json = {'success' => 1};
+            return $c->render(json => $json);
         }
         else {
             $c->response->redirect($referer);
@@ -490,10 +493,10 @@ sub _redirect_or_success {
     else {
         return if $just_return;
         if($c->{'request'}->{'parameters'}->{'json'}) {
-            $c->stash->{'json'} = {'success' => 1};
-            return $c->detach('Thruk::View::JSON');
+            my $json = {'success' => 1};
+            return $c->render(json => $json);
         }
-        $c->stash->{template} = 'cmd_success.tt';
+        $c->stash->{_template} = 'cmd_success.tt';
     }
 
     return;
@@ -502,7 +505,7 @@ sub _redirect_or_success {
 ######################################
 # sending commands
 sub _do_send_command {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     if($c->stash->{'use_csrf'}) {
         return unless Thruk::Utils::check_csrf($c);
@@ -521,8 +524,8 @@ sub _do_send_command {
     # replace parsed dates
     my $start_time_unix = 0;
     my $end_time_unix   = 0;
-    if( ref $self and defined $self->{'spread_startdates'} and scalar @{ $self->{'spread_startdates'} } > 0 ) {
-        my $new_start_time = shift @{ $self->{'spread_startdates'} };
+    if( ref $c and defined $c->{'spread_startdates'} and scalar @{ $c->{'spread_startdates'} } > 0 ) {
+        my $new_start_time = shift @{ $c->{'spread_startdates'} };
         my $new_date = Thruk::Utils::format_date( $new_start_time, '%Y-%m-%d %H:%M:%S' );
         $c->log->debug( "setting spreaded start date to: " . $new_date );
         $c->request->parameters->{'start_time'} = $new_date;
@@ -716,7 +719,6 @@ sub _bulk_send {
 ######################################
 # generate spreaded start dates
 sub _generate_spread_startdates {
-    my $self         = shift;
     my $c            = shift;
     my $number       = shift;
     my $starttime    = shift;
@@ -803,7 +805,7 @@ sub _check_reschedule_alias {
 ######################################
 # set host / service from downtime / comment ids
 sub _set_host_service_from_down_com_ids {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
     my $data;
 
     if( $c->{'request'}->{'parameters'}->{'com_id'} or $c->{'request'}->{'parameters'}->{'down_id'} ) {
@@ -840,7 +842,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

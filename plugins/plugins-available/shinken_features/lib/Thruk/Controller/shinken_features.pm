@@ -2,15 +2,15 @@ package Thruk::Controller::shinken_features;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
-Thruk::Controller::shinken_features - Catalyst Controller
+Thruk::Controller::shinken_features - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =head1 METHODS
 
@@ -18,47 +18,24 @@ Catalyst Controller.
 
 =cut
 
-######################################
+##########################################################
 
-=head2 shinken_cgi
+=head2 add_routes
 
-page: /thruk/cgi-bin/shinken.cgi
-
-=cut
-sub shinken_cgi : Path('/thruk/cgi-bin/shinken_status.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    return $c->detach('/shinken_features/shinken_status');
-}
-
-
-######################################
-
-=head2 outagespbimp_cgi
-
+page: /thruk/cgi-bin/shinken_status.cgi
 page: /thruk/cgi-bin/outagespbimp.cgi
-
-=cut
-sub outagespbimp_cgi : Path('/thruk/cgi-bin/outagespbimp.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    return $c->detach('/shinken_features/outages_pbimp_index');
-}
-
-######################################
-
-=head2 businessview_cgi
-
 page: /thruk/cgi-bin/businessview.cgi
 
 =cut
-sub businessview_cgi : Path('/thruk/cgi-bin/businessview.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    return $c->detach('/shinken_features/businessview_index');
+
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/shinken_status.cgi')->to(controller => 'Controller::shinken_features', action => 'shinken_status');
+    $r->any('/*/cgi-bin/outagespbimp.cgi')->to(controller => 'Controller::shinken_features', action => 'outages_pbimp_index');
+    $r->any('/*/cgi-bin/businessview.cgi')->to(controller => 'Controller::shinken_features', action => 'businessview_index');
+
+    return;
 }
-
-
 
 ##########################################################
 
@@ -67,14 +44,16 @@ sub businessview_cgi : Path('/thruk/cgi-bin/businessview.cgi') {
 outages impacts index page
 
 =cut
-sub outages_pbimp_index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub outages_pbimp_index {
+    my ( $c ) = @_;
 
     unless($c->stash->{'enable_shinken_features'}) {
         return $c->detach('/error/index/21');
     }
 
-    $self->_process_outagespbimp($c);
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
+
+    _process_outagespbimp($c);
 
     Thruk::Utils::ssi_include($c);
 
@@ -89,14 +68,16 @@ sub outages_pbimp_index :Path :Args(0) :MyAction('AddDefaults') {
 shinken status index page
 
 =cut
-sub shinken_status :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub shinken_status {
+    my ( $c ) = @_;
 
     unless($c->stash->{'enable_shinken_features'}) {
         return $c->detach('/error/index/21');
     }
 
-    $self->_process_bothtypes_page($c);
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
+
+    _process_bothtypes_page($c);
 
     Thruk::Utils::ssi_include($c);
 
@@ -106,7 +87,7 @@ sub shinken_status :Path :Args(0) :MyAction('AddDefaults') {
 
 ##########################################################
 sub _process_outagespbimp {
-    my ( $self, $c ) = @_;
+    my ( $c ) = @_;
 
     # We want root problems only
     my $hst_pbs = $c->{'db'}->get_hosts(filter => [ Thruk::Utils::Auth::get_auth_filter($c, 'hosts'),
@@ -140,7 +121,7 @@ sub _process_outagespbimp {
             $host->{'comment_count'} = $hostcomments->{$host->{'name'}} if defined $hostcomments->{$host->{'name'}};
 
             # count number of impacted hosts / services
-            my($affected_hosts,$affected_services) = $self->_count_hosts_and_services_impacts($host);
+            my($affected_hosts,$affected_services) = _count_hosts_and_services_impacts($host);
 
             $host->{'affected_hosts'}    = $affected_hosts;
             $host->{'affected_services'} = $affected_services;
@@ -161,7 +142,7 @@ sub _process_outagespbimp {
             $srv->{'comment_count'} = 0;
 
             # count number of impacted hosts / services
-            my($affected_hosts,$affected_services) = $self->_count_hosts_and_services_impacts($srv);
+            my($affected_hosts,$affected_services) = _count_hosts_and_services_impacts($srv);
 
             $srv->{'affected_hosts'}    = $affected_hosts;
             $srv->{'affected_services'} = $affected_services;
@@ -186,7 +167,7 @@ sub _process_outagespbimp {
     $c->stash->{title}          = 'Problems and Impacts';
     $c->stash->{infoBoxTitle}   = 'Problems and Impacts';
     $c->stash->{page}           = 'status';
-    $c->stash->{template}       = 'shinken_outagespbimp.tt';
+    $c->stash->{_template}      = 'shinken_outagespbimp.tt';
 
     return 1;
 }
@@ -195,14 +176,14 @@ sub _process_outagespbimp {
 ##########################################################
 # create the status details page
 sub _process_bothtypes_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     $c->stash->{title}         = 'Current Network Status';
     $c->stash->{infoBoxTitle}  = 'Current Network Status';
     $c->stash->{page}          = 'status';
     $c->stash->{show_top_pane} = 1;
     $c->stash->{style}         = 'bothtypes';
-    $c->stash->{template}      = 'shinken_status_bothtypes.tt';
+    $c->stash->{_template}     = 'shinken_status_bothtypes.tt';
 
     # which host to display?
     my( $hostfilter, $servicefilter, $groupfilter ) = Thruk::Utils::Status::do_filter($c);
@@ -234,12 +215,12 @@ sub _process_bothtypes_page {
 
     # count number of impacted hosts / services
     for my $host (@{$hosts}) {
-        my($affected_hosts,$affected_services) = $self->_count_hosts_and_services_impacts($host);
+        my($affected_hosts,$affected_services) = _count_hosts_and_services_impacts($host);
         $host->{'affected_hosts'}    = $affected_hosts;
         $host->{'affected_services'} = $affected_services;
     }
     for my $srv (@{$services}) {
-        my($affected_hosts,$affected_services) = $self->_count_hosts_and_services_impacts($srv);
+        my($affected_hosts,$affected_services) = _count_hosts_and_services_impacts($srv);
         $srv->{'affected_hosts'}    = $affected_hosts;
         $srv->{'affected_services'} = $affected_services;
     }
@@ -252,7 +233,7 @@ sub _process_bothtypes_page {
         $c->res->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
         $c->stash->{'servicedata'}  = $services;
         $c->stash->{'hostdata'}     = $hosts;
-        $c->stash->{'template'}     = 'excel/status_detail.tt';
+        $c->stash->{'_template'}    = 'excel/status_detail.tt';
         return $c->detach('View::Excel');
     }
 
@@ -270,7 +251,7 @@ sub _process_bothtypes_page {
 ##########################################################
 # Count the impacts for an host
 sub _count_hosts_and_services_impacts {
-    my($self, $host ) = @_;
+    my($host ) = @_;
 
     my $affected_hosts    = 0;
     my $affected_services = 0;
@@ -300,12 +281,14 @@ sub _count_hosts_and_services_impacts {
 businessview index page
 
 =cut
-sub businessview_index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub businessview_index {
+    my ( $c ) = @_;
 
     unless($c->stash->{'enable_shinken_features'}) {
         return $c->detach('/error/index/21');
     }
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     my $priorities = [];
     for my $crit (sort keys %{$c->config->{'priorities'}}) {
@@ -339,7 +322,7 @@ sub businessview_index :Path :Args(0) :MyAction('AddDefaults') {
             $host->{'comment_count'} = $hostcomments->{$host->{'name'}} if defined $hostcomments->{$host->{'name'}};
 
             # count number of impacted hosts / services
-            $self->_link_parent_hosts_and_services($c, $host);
+            _link_parent_hosts_and_services($c, $host);
 
             # add a criticity to this crit level
             my $crit = $host->{'criticity'};
@@ -356,7 +339,7 @@ sub businessview_index :Path :Args(0) :MyAction('AddDefaults') {
             $srv->{'comment_count'} = 0;
 
             # count number of impacted hosts / services
-            $self->_link_parent_hosts_and_services($c, $srv);
+            _link_parent_hosts_and_services($c, $srv);
 
             # add a criticity to this crit level
             my $crit = $srv->{'criticity'};
@@ -375,7 +358,7 @@ sub businessview_index :Path :Args(0) :MyAction('AddDefaults') {
     $c->stash->{title}          = 'Business Elements';
     $c->stash->{infoBoxTitle}   = 'Business Elements';
     $c->stash->{page}           = 'businessview';
-    $c->stash->{template}       = 'shinken_businessview.tt';
+    $c->stash->{_template}      = 'shinken_businessview.tt';
 
     Thruk::Utils::ssi_include($c);
 
@@ -386,7 +369,7 @@ sub businessview_index :Path :Args(0) :MyAction('AddDefaults') {
 ##########################################################
 # Count the impacts for an host
 sub _link_parent_hosts_and_services {
-    my($self, $c,  $elt, $level ) = @_;
+    my($c,  $elt, $level ) = @_;
 
     $level                     = 0 unless defined $level;
     $elt->{'host_parents'}     = [];
@@ -415,7 +398,7 @@ sub _link_parent_hosts_and_services {
                 my $srv = $tmp_services->[0];
                 push(@{$elt->{'services_parents'}}, $srv);
                 # And call this on this parent too to build a tree
-                return -1 if $self->_link_parent_hosts_and_services($c, $srv, ++$level) == -1;
+                return -1 if _link_parent_hosts_and_services($c, $srv, ++$level) == -1;
             }else{
                 my $host_search_filter = [ { name               => { '='     => $parent } },
                                          ];
@@ -426,7 +409,7 @@ sub _link_parent_hosts_and_services {
 
                 push(@{$elt->{'host_parents'}}, $hst);
                 # And call this on this parent too to build a tree
-                return -1 if $self->_link_parent_hosts_and_services($c, $hst, ++$level) == -1;
+                return -1 if _link_parent_hosts_and_services($c, $hst, ++$level) == -1;
             }
         }
     }
@@ -448,7 +431,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

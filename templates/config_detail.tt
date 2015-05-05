@@ -67,7 +67,7 @@
 
     <div align="center">[% PROCESS _pager.tt %]</div>
     <br>
-    <div class='itemTotalsTitle'>[% IF data.size %][% data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Entries Displayed</div>
+    <div class='itemTotalsTitle'>[% IF _data.size %][% _data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Entries Displayed</div>
 
     <script type="text/javascript">
     <!--

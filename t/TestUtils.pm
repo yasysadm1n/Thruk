@@ -15,17 +15,11 @@ BEGIN {
 # create connection pool
 # has to be done really early to save memory
 use lib 'lib';
-use Thruk::Backend::Pool;
-BEGIN {
-    Thruk::Backend::Pool::init_backend_thread_pool();
-}
-
-###################################################
-# clean up env
-use Thruk::Utils::INC;
-BEGIN {
-    Thruk::Utils::INC::clean();
-}
+# TODO: ??
+#use Thruk::Backend::Pool;
+#BEGIN {
+#    Thruk::Backend::Pool::init_backend_thread_pool();
+#}
 
 ###################################################
 use strict;
@@ -36,13 +30,21 @@ use Encode qw/decode_utf8/;
 use File::Slurp;
 use HTTP::Request::Common qw(POST);
 use HTTP::Cookies::Netscape;
+use HTTP::Response;
 use LWP::UserAgent;
 use File::Temp qw/ tempfile /;
+use HTML::Entities qw//;
 use Carp;
 use Thruk::Utils;
 use Thruk::Utils::External;
 
-use Catalyst::Test 'Thruk';
+require Exporter;
+our @ISA = qw(Exporter);
+our @EXPORT    = qw(request ctx_request);
+our @EXPORT_OK = qw(request ctx_request);
+
+use Test::Mojo;
+my $mojo = Test::Mojo->new('Thruk');
 
 my $use_html_lint = 0;
 my $lint;
@@ -51,6 +53,32 @@ eval {
     $use_html_lint = 1;
     $lint          = new HTML::Lint;
 };
+
+#########################
+sub request {
+    my($url) = @_;
+    my $tx;
+    if(ref $url eq "") {
+        $tx   = $mojo->ua->build_tx(GET => $url);
+    } else {
+        my $req = $url;
+        my $url = "".$req->uri();
+        $url    =~ s|^\Qhttp://localhost.local\E||gmx;
+        $tx     = $mojo->ua->build_tx($req->method => $url);
+    }
+    my $test = $mojo->tx($mojo->ua->start($tx));
+    my $res = HTTP::Response->parse($tx->res->to_string);
+    return($res);
+}
+
+#########################
+sub ctx_request {
+    my($url) = @_;
+    my $tx   = $mojo->ua->build_tx(GET => $url);
+    my $test = $mojo->tx($mojo->ua->start($tx));
+    my $res = HTTP::Response->parse($tx->res->to_string);
+    return($res, $mojo->ua->server->app);
+}
 
 #########################
 sub get_test_servicegroup {
@@ -793,10 +821,15 @@ sub bail_out_req {
     my($msg, $req) = @_;
     my $page    = $req->content;
     my $error   = "";
-    if($page =~ m/<!--error:(.*?):error-->/smxo) {
+    if($page =~ m/<!--error:(.*?):error-->/smx) {
         $error = $1;
         $error =~ s/\A\s*//gmsx;
         $error =~ s/\s*\Z//gmsx;
+        BAIL_OUT($0.': '.$req->code.' '.$msg.' - '.$error);
+    }
+    if($page =~ m/<pre\s+id="error">(.*)$/mx) {
+        $error = HTML::Entities::decode($1);
+        $error =~ s|</pre>$||gmx;
         BAIL_OUT($0.': '.$req->code.' '.$msg.' - '.$error);
     }
     diag(Dumper($msg));

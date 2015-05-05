@@ -1,6 +1,6 @@
 ﻿[% USE date %]
 [% size = 1 %]
-[% IF data %][% size = data.size + 1 %][% END %]
+[% IF data %][% size = _data.size + 1 %][% END %]
 <workbook>
   <worksheet name='[% name %]' autofilter='A1:[% last_col %][% size %]'>
     <row>
@@ -11,7 +11,7 @@
         [% END %]
       </format>
     </row>
-    [% FOREACH d = data %]
+    [% FOREACH d = _data %]
     <row>
       [% FOREACH col = columns %]
       [% x = loop.index + 1 %]

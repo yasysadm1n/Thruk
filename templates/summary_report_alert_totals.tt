@@ -1,8 +1,8 @@
 ﻿<div align="center">
   <div align="center" class='dataSubTitle'>[% box_title %]</div><br>
 
-  [%  FOREACH report_key = data.keys.sort %]
-  [% SET d = data.$report_key %]
+  [%  FOREACH report_key = _data.keys.sort %]
+  [% SET d = _data.$report_key %]
   [% SET class = 'reportDataOdd'  IF loop.even %]
   [% SET class = 'reportDataEven' IF loop.odd  %]
   <table border="1" cellspacing="0" cellpadding="0" class='[% class %]'>

@@ -2,8 +2,7 @@ package Thruk::Controller::test;
 
 use strict;
 use warnings;
-use utf8;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 =head1 NAME
 
@@ -22,15 +21,17 @@ Catalyst Controller.
 =cut
 
 ##########################################################
-sub index :Path :Args(0) :MyAction('AddDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my ( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     if(   (!defined $ENV{'THRUK_SRC'} or ($ENV{'THRUK_SRC'} ne 'TEST_LEAK' and $ENV{'THRUK_SRC'} ne 'TEST'))
        and !$c->config->{'thruk_debug'}) {
         die("test.cgi is disabled unless in test mode!");
     }
 
-    $c->stash->{'template'} = 'main.tt';
+    $c->stash->{'_template'} = 'main.tt';
 
     my $action = $c->{'request'}->{'parameters'}->{'action'} || '';
 
@@ -53,7 +54,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;

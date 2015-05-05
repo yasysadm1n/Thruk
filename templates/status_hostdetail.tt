@@ -7,7 +7,7 @@
 [% UNLESS authorized_for_read_only %]
 <script type="text/javascript">
 <!--
-  var dfl_Hash = new Object({[% FOREACH h = data %]r[% loop.index %]: "[% escape_bslash(h.name) %];;[% h.peer_key %]"[% UNLESS loop.last %],[% END %][% END %]});
+  var dfl_Hash = new Object({[% FOREACH h = _data %]r[% loop.index %]: "[% escape_bslash(h.name) %];;[% h.peer_key %]"[% UNLESS loop.last %],[% END %][% END %]});
   hide_activity_icons_timer = window.setTimeout("hide_activity_icons()", 5000);
 -->
 </script>
@@ -115,7 +115,7 @@
     <div align="center">[% PROCESS _pager.tt %]</div>
 
     <br>
-    <div class='itemTotalsTitle'>[% IF data.size %][% data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Host Entries Displayed</div>
+    <div class='itemTotalsTitle'>[% IF _data.size %][% _data.size %] of [% pager.total_entries %][% ELSE %]0[% END %] Matching Host Entries Displayed</div>
     [% END %]
 
 [% PROCESS _footer.tt %]

@@ -13,7 +13,7 @@
     <th class='data'>Days/Dates</th>
     <th class='data'>Times</th>
   </tr>
-  [% FOREACH d = data %]
+  [% FOREACH d = _data %]
   [% SET class = 'dataOdd'  IF loop.odd %]
   [% SET class = 'dataEven' IF loop.even %]
   [% SET class = 'tableRowHover' IF jump == d.name %]

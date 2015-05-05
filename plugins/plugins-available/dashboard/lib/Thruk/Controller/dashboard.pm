@@ -1,5 +1,5 @@
 package Thruk::Controller::dashboard;
-use parent 'Catalyst::Controller';
+use Mojo::Base 'Mojolicious::Controller';
 
 use strict;
 use warnings;
@@ -13,11 +13,11 @@ use Thruk::Backend::Provider::DashboardHTTP;
 
 =head1 NAME
 
-Thruk::Controller::dashboard - Catalyst Controller
+Thruk::Controller::dashboard - Mojolicious Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Mojolicious Controller.
 
 =cut
 
@@ -41,14 +41,26 @@ Catalyst Controller.
 
 
 ##########################################################
-# add new view item
-Thruk::Utils::Status::add_view({'group' => 'Dashboard',
-                                'name'  => 'Dashboard',
-                                'value' => 'dashboard',
-                                'url'   => 'dashboard.cgi'
-                            });
 
-##########################################################
+=head2 add_routes
+
+page: /thruk/cgi-bin/dashboard.cgi
+
+=cut
+
+sub add_routes {
+    my($self, $app, $r) = @_;
+    $r->any('/*/cgi-bin/dashboard.cgi')->to(controller => 'Controller::dashboard', action => 'index');
+
+    # add new view item
+    Thruk::Utils::Status::add_view({'group' => 'Dashboard',
+                                    'name'  => 'Dashboard',
+                                    'value' => 'dashboard',
+                                    'url'   => 'dashboard.cgi'
+    });
+
+    return;
+}
 
 =head1 METHODS
 
@@ -58,8 +70,10 @@ page: /thruk/cgi-bin/dashboard.cgi
 
 =cut
 
-sub index : Path : Args(0) : MyAction('AddDefaults') : Path('/thruk/cgi-bin/dashboard.cgi') {
-    my( $self, $c ) = @_;
+sub index {
+    my( $c ) = @_;
+
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_DEFAULTS);
 
     my $style = $c->{'request'}->{'parameters'}->{'style'} || 'dashboard';
     if($style ne 'dashboard') {
@@ -68,11 +82,11 @@ sub index : Path : Args(0) : MyAction('AddDefaults') : Path('/thruk/cgi-bin/dash
 
     my $action = $c->{'request'}->{'parameters'}->{'action'} || '';
     if(defined $c->{'request'}->{'parameters'}->{'addb'} or defined $c->{'request'}->{'parameters'}->{'saveb'}) {
-        return $self->_process_bookmarks($c);
+        return _process_bookmarks($c);
     }
 
     if(defined $c->{'request'}->{'parameters'}->{'verify'} and $c->{'request'}->{'parameters'}->{'verify'} eq 'time') {
-        return $self->_process_verify_time($c);
+        return _process_verify_time($c);
     }
 
     # set some defaults
@@ -93,11 +107,11 @@ sub index : Path : Args(0) : MyAction('AddDefaults') : Path('/thruk/cgi-bin/dash
         $c->stash->{substyle} = 'service';
     }
 
-    $self->_process_dashboard_page($c);
+    _process_dashboard_page($c);
 
     Thruk::Utils::set_paging_steps($c, ['*16', 32, 48, 96]);
 
-    $c->stash->{template} = 'status_dashboard.tt';
+    $c->stash->{_template} = 'status_dashboard.tt';
 
     Thruk::Utils::ssi_include($c);
 
@@ -110,7 +124,7 @@ sub index : Path : Args(0) : MyAction('AddDefaults') : Path('/thruk/cgi-bin/dash
 ##########################################################
 # create the status details page
 sub _process_dashboard_page {
-    my( $self, $c ) = @_;
+    my( $c ) = @_;
 
     # which host to display?
     my( $hostfilter, $servicefilter, $hostgroupfilter, $servicegroupfilter ) = Thruk::Utils::Status::do_filter($c);
@@ -240,9 +254,8 @@ sub _process_dashboard_page {
 =head1 AUTHOR
 
 Sigma Informatique, 2011
+Sven Nierlein, 2009-2014, <sven@nierlein.org>
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;
