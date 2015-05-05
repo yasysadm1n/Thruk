@@ -42,6 +42,7 @@ inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/FCGI/ProcManager/MaxRequestsThruk.pm
+lib/Mojolicious/Plugin/Thruk/ExcelRenderer.pm
 lib/Mojolicious/Plugin/Thruk/JSONRenderer.pm
 lib/Mojolicious/Plugin/Thruk/ToolkitRenderer.pm
 lib/Monitoring/Availability.pm

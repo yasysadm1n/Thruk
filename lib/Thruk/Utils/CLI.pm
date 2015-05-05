@@ -448,15 +448,20 @@ sub _dummy_c {
     my($self) = @_;
     _debug("_dummy_c()") if $Thruk::Utils::CLI::verbose >= 2;
     delete local $ENV{'CATALYST_SERVER'} if defined $ENV{'CATALYST_SERVER'};
-    require Catalyst::Test;
+    # TODO: use mojo cgi
+    require Test::Mojo;
+    require HTTP::Response;
     # temporary close stderr because ubuntu 12.04 (and maybe others) print
     # Error opening file for reading: Permission denied
     # due to permission errors on /proc/self/auxv after setuid
-    open(my $saveerr, ">&STDERR") if $Thruk::Utils::CLI::verbose <= 1;
-    close(STDERR)                 if $Thruk::Utils::CLI::verbose <= 1;
-    Catalyst::Test->import('Thruk');
-    open(STDERR, ">&", $saveerr)  if $Thruk::Utils::CLI::verbose <= 1;
-    my($res, $c) = ctx_request('/thruk/cgi-bin/remote.cgi');
+#    open(my $saveerr, ">&STDERR") if $Thruk::Utils::CLI::verbose <= 1;
+#    close(STDERR)                 if $Thruk::Utils::CLI::verbose <= 1;
+    my $mojo = Test::Mojo->new('Thruk');
+#    open(STDERR, ">&", $saveerr)  if $Thruk::Utils::CLI::verbose <= 1;
+    my $tx   = $mojo->ua->build_tx(GET => '/thruk/cgi-bin/remote.cgi');
+    my $test = $mojo->tx($mojo->ua->start($tx));
+    my $res  = HTTP::Response->parse($tx->res->to_string);
+    my $c    = $mojo->tx;
     my $failed = ( $res->code == 200 ? 0 : 1 );
     _debug("_dummy_c() done") if $Thruk::Utils::CLI::verbose >= 2;
     return($c, $failed);
@@ -525,7 +530,7 @@ sub _run_commands {
     }
 
     unless(defined $c->stash->{'defaults_added'}) {
-        Thruk::Action::AddDefaults::add_defaults(1, undef, "Thruk::Controller::remote", $c);
+        Thruk::Action::AddDefaults::add_defaults($c, 1);
     }
     # set backends from options
     if(defined $opt->{'backends'} and scalar @{$opt->{'backends'}} > 0) {

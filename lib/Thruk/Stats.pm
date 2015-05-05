@@ -6,6 +6,8 @@ use strict;
 # TODO: implement
 sub profile {
 }
+sub enable {
+}
 
 our $instance;
 sub new {
@@ -45,6 +47,12 @@ return new stats object
     profile(begin|end => $name)
 
 sets breakpoint with message
+
+=head2 enable
+
+    enable()
+
+enable profiling
 
 =cut
 

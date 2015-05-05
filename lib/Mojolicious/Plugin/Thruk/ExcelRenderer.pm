@@ -13,10 +13,10 @@ use Carp qw/confess/;
 
 =cut
 sub register {
-    my ( $self, $app, $settings ) = @_;
+    my ($self, $app) = @_;
 
     $app->renderer->add_handler('excel' => sub {
-        my($renderer, $controller, $output, $options) = @_;
+        #my($renderer, $controller, $output, $options) = @_;
 
         require IO::String;
         require Excel::Template;
@@ -32,9 +32,9 @@ sub register {
         ${$_[2]} = "".$excel_template->output;
 
         # no automatic encoding
-        delete $options->{encoding};
+        delete $_[3]->{encoding};
 
-        $controller->res->headers->content_type('application/x-msexcel');
+        $_[1]->res->headers->content_type('application/x-msexcel');
         return $_[2];
     });
 
