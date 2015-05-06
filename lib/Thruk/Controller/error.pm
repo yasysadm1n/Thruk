@@ -40,9 +40,10 @@ sub index {
         confess("undefined c in error/index");
     }
 
-    Thruk::Action::AddDefaults::add_defaults($c, 1) unless defined $c->stash->{'defaults_added'};
+    Thruk::Action::AddDefaults::begin($c) unless $c->stash->{'root_begin'};
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS) unless defined $c->stash->{'defaults_added'};
 
-    $c->{'canceled'}          = 1;
+    $c->{'errored'}           = 1;
     $c->stash->{errorDetails} = '';
 
     # status code must be != 200, otherwise compressed output will fail
@@ -252,6 +253,7 @@ sub index {
     }
 
     # do not cache errors
+    $c->rendered($code);
     $c->res->code($code);
     $c->res->headers->last_modified(time);
     $c->res->headers->expires(time - 3600);
@@ -272,6 +274,11 @@ sub index {
         if($c->config->{'shadow_naemon_dir'} and $c->stash->{'failed_backends'} and scalar keys %{$c->stash->{'failed_backends'}} > 0) {
             $c->run_after_request('Thruk::Utils::Livecache::check_shadow_naemon_procs($c->config, $c, 1);');
         }
+    }
+
+    # db must be defined
+    if(!$c->{'db'}) {
+        $c->{'db'} = 0;
     }
 
     # do not download errors

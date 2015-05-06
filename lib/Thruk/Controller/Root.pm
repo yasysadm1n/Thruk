@@ -88,7 +88,6 @@ because we dont want index.html in the url
 
 sub index_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     return if Thruk::Utils::choose_mobile($c, $c->stash->{'url_prefix'}."cgi-bin/mobile.cgi");
     if( $c->stash->{'use_frames'} ) {
         return(thruk_index_html($c));
@@ -109,7 +108,6 @@ but if used not via fastcgi/apache, there is no way around
 
 sub thruk_index {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     # redirect from /thruk to /thruk/
     if($c->request->path eq 'thruk') {
         return $c->redirect_to($c->stash->{'url_prefix'});
@@ -153,7 +151,6 @@ page: /thruk/index.html
 
 sub thruk_index_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     return if Thruk::Utils::choose_mobile($c, $c->stash->{'url_prefix'}."cgi-bin/mobile.cgi");
     unless ( $c->stash->{'use_frames'} ) {
         return(thruk_main_html($c));
@@ -178,7 +175,6 @@ page: /thruk/side.html
 
 sub thruk_side_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
     Thruk::Utils::check_pid_file($c);
     Thruk::Utils::Menu::read_navigation($c) unless defined $c->stash->{'navigation'} and $c->stash->{'navigation'} ne '';
@@ -202,7 +198,6 @@ page: /thruk/frame.html
 
 sub thruk_frame_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     # allowed links to be framed
     my $valid_links = [ quotemeta( $c->stash->{'url_prefix'}."cgi-bin" ), quotemeta( $c->stash->{'documentation_link'} ), quotemeta( $c->stash->{'start_page'} ), ];
     my $additional_links = $c->config->{'allowed_frame_links'};
@@ -249,7 +244,6 @@ page: /thruk/main.html
 
 sub thruk_main_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
 
     # add defaults when not using frames, otherwise the menu would be incomplete
     if(!defined $c->stash->{'defaults_added'} and !$c->stash->{'use_frames'}) {
@@ -275,7 +269,6 @@ page: /thruk/changes.html
 
 sub thruk_changes_html {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
     $c->stash->{infoBoxTitle}            = 'Change Log';
     $c->stash->{'title'}                 = 'Change Log';
@@ -297,7 +290,6 @@ page: /thruk/docs/
 
 sub thruk_docs  {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
     # TODO: ??
     #if( scalar @{ $c->request->args } > 0 and $c->request->args->[0] ne 'index.html' ) {
@@ -325,7 +317,6 @@ page: /thruk/cgi-bin/job.cgi
 
 sub job_cgi {
     my( $c ) = @_;
-    return if defined $c->{'canceled'};
     Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
     return Thruk::Utils::External::job_page($c);
 }

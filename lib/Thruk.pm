@@ -60,6 +60,7 @@ use Thruk::Stats;
 use Thruk::Request;
 use Thruk::Action::AddDefaults;
 use Thruk::Backend::Manager;
+use Thruk::Authentication::User;
 
 use constant {
     ADD_DEFAULTS        => 0,
@@ -154,7 +155,7 @@ sub startup {
     $self->helper('res'     => sub { my($c) = @_; return($c->response) });
     $self->helper('cache'   => \&cache);
     $self->helper('detach'  => sub {
-        if($_[1] =~ m|/error/index/(\d+)$|mx) {
+        if(!$_[0]->{'errored'} && $_[1] =~ m|/error/index/(\d+)$|mx) {
             return(Thruk::Controller::error::index($_[0], $1));
         }
         confess("detach: ".$_[1]." at ".$_[0]->req->url->path);
@@ -166,30 +167,39 @@ sub startup {
     });
     $self->helper('clear_errors' => sub { $self->{'errors'} = []; });
     $self->helper('db'           => sub { $_[0]->{'db'} });
-
+    $self->helper('user_exists'  => sub { return(defined $_[0]->{'user'}) });
+    $self->helper('user'         => sub { return($_[0]->{'user'}->{'username'}); });
+    $self->helper('authenticate' => sub {
+       my $user = Thruk::Authentication::User->new;
+       $_[0]->{'user'} = $user->authenticate($_[0]);
+    });
     # TODO: implement
-    $self->helper('user_exists'                 => sub { return(1) });
-    $self->helper('user'                        => sub { return("thrukadmin"); });
     $self->helper('check_user_roles'            => sub { return(1) });
     $self->helper('check_permissions'           => sub { return(1) });
     $self->helper('check_cmd_permissions'       => sub { return(1) });
     $self->helper('check_user_roles_wrapper'    => sub { return(1) });
-    $self->helper('authenticate'                => sub { return(1) });
-
 
     ###################################################
     # add some hooks
-    $self->hook(before_dispatch  => sub {
-        my $c = $_[0];
+    $self->hook(around_action => sub {
+        my ($next, $c, $action, $last) = @_;
+        # before
+        $c->{'errored'} = 0;
+        $self->renderer->default_handler('tt');
         $Thruk::Request::c = $c;
         _before_prepare_body($c);
         Thruk::Action::AddDefaults::begin($c);
         $c->{'request'} = $c->request;
-        return($c);
+        return $next->();
     });
     $self->hook(before_render => sub {
         my($c, $args) = @_;
+        if($c->{errored}) {
+            $self->renderer->default_handler('ep');
+            return($c);
+        }
         if($args->{exception}) {
+            $c->log->error("".$args->{exception});
             $c->error("".$args->{exception});
             Thruk::Controller::error::index($c, 13);
         }

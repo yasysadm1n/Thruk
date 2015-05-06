@@ -19,6 +19,7 @@ use Time::HiRes;
 use File::Slurp;
 use Storable;
 use POSIX ":sys_wait_h";
+use Mojo::IOLoop;
 
 ##############################################
 
@@ -531,6 +532,12 @@ sub log_profile {
 ##############################################
 sub _do_child_stuff {
     my($c, $dir, $id) = @_;
+
+    # cleanup running loops
+    # TODO: check
+    $c->ioloop->reset;
+    delete $c->{ioloop}; # not sure this is needed
+    Mojo::IOLoop->reset;
 
     POSIX::setsid() or die "Can't start a new session: $!";
 

@@ -20,24 +20,15 @@ use warnings;
 use Carp;
 use Data::Dumper;
 use JSON::XS qw/encode_json/;
-
-########################################
-#before 'execute' => sub {
-#    add_defaults(0, @_);
-#};
-#
-# TODO: ...
-#after 'execute' => sub {
-#    after_execute(@_);
-#};
-
+use Scalar::Util qw/weaken/;
 
 ######################################
 
 =head2 begin
 
-sets the doc link and decides if frames are used
-begin, running at the begin of every req
+    begin, running at the begin of every req (except static ones)
+
+    runs before add_defaults().
 
 =cut
 
@@ -46,6 +37,10 @@ sub begin {
     $c->stats->profile(begin => "Root begin");
 
     Thruk::Action::AddDefaults::set_configs_stash($c);
+    $c->stash->{'root_begin'} = 1;
+
+    $c->stash->{'c'} = $c;
+    weaken($c->stash->{'c'});
 
     # user data
     $c->stash->{'user_data'} = { bookmarks => {} };
@@ -107,15 +102,6 @@ sub begin {
     $c->stash->{minimal}               = $c->{'request'}->{'parameters'}->{'minimal'} || '';
     $c->stash->{show_nav_button}       = 0 if $c->stash->{minimal};
 
-    # initialize our backends
-    unless ( defined $c->{'db'} ) {
-        $c->{'db'} = $c->app->{'db'};
-        if( defined $c->{'db'} ) {
-            $c->{'db'}->init(
-                'backend_debug' => $c->config->{'backend_debug'},
-            );
-        }
-    }
     # needed for the autoload methods
     $Thruk::Backend::Manager::c = $c;
 
@@ -148,42 +134,53 @@ sub begin {
 
     $c->stash->{'iframed'} = $c->{'request'}->{'parameters'}->{'iframed'} || 0;
 
-    # redirect to error page unless we have a connection
-    if(    !defined $c->{'db'}
-        or !defined $c->{'db'}->{'backends'}
-        or ref $c->{'db'}->{'backends'} ne 'ARRAY'
-        or scalar @{$c->{'db'}->{'backends'}} == 0 ) {
+    # additional views on status pages
+    $c->stash->{'additional_views'} = $Thruk::Utils::Status::additional_views || {};
 
-        my $product_prefix = $c->config->{'product_prefix'};
+    # icon image path
+    $c->config->{'logo_path_prefix'} = exists $c->config->{'logo_path_prefix'} ? $c->config->{'logo_path_prefix'} : $c->stash->{'url_prefix'}.'themes/'.$c->stash->{'theme'}.'/images/logos/';
+    $c->stash->{'logo_path_prefix'}  = $c->config->{'logo_path_prefix'};
 
-        # return here for static content, no backend needed
-        if(   $c->request->action =~ m|$product_prefix/\w+\.html|mx
-           or $c->request->action =~ m|$product_prefix\/\w+\.html|mx
-           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/conf\.cgi|mx
-           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/remote\.cgi|mx
-           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/login\.cgi|mx
-           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/restricted\.cgi|mx
-           or $c->request->action eq '/'
-           or $c->request->action eq $product_prefix
-           or $c->request->action eq $product_prefix.'/docs'
-           or $c->request->action eq $product_prefix.'\\/docs\\/' ) {
-            $c->stash->{'no_auto_reload'} = 1;
-            return;
-        }
-        # redirect to backends manager if admin user
-        if( $c->config->{'use_feature_configtool'} ) {
-            $c->{'request'}->{'parameters'}->{'sub'} = 'backends';
-            return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/conf.cgi?sub=backends");
-        } else {
-            return $c->detach("/error/index/14");
+    # make private _ hash keys available
+    $Template::Stash::PRIVATE = undef;
+
+    if(defined $c->request->cookie('thruk_auth')) {
+        $c->stash->{'cookie_auth'} = 1;
+    }
+
+    # view mode must be a scalar
+    for my $key (qw/view_mode hidesearch hidetop style/) {
+        if($c->{'request'}->{'parameters'}->{$key}) {
+            if(ref $c->{'request'}->{'parameters'}->{$key} eq 'ARRAY') {
+                $c->{'request'}->{'parameters'}->{$key} = pop(@{$c->{'request'}->{'parameters'}->{$key}});
+            }
         }
     }
 
-    # set check_local_states
-    unless(defined $c->config->{'check_local_states'}) {
-        $c->config->{'check_local_states'} = 0;
-        if(scalar @{$c->{'db'}->{'backends'}} > 1) {
-            $c->config->{'check_local_states'} = 1;
+    ###############################
+    # parse cgi.cfg
+    Thruk::Utils::read_cgi_cfg($c);
+
+    ###############################
+    # Authentication
+    $c->log->debug("checking auth");
+    if($c->req->url->path =~ m~cgi-bin/remote\.cgi~mx) {
+        $c->log->debug("remote.cgi does not use authentication");
+    }
+    elsif($c->req->url->path =~ m~cgi-bin/login\.cgi~mx) {
+        $c->log->debug("login.cgi does not use authentication");
+    } else {
+        unless($c->user_exists) {
+            $c->log->debug("user not authenticated yet");
+            unless ($c->authenticate()) {
+                # return 403 forbidden or kick out the user in other way
+                $c->log->debug("user is not authenticated");
+                return $c->detach('/error/index/10');
+            };
+        }
+        $c->log->debug("user authenticated as: ".$c->user());
+        if($c->user_exists) {
+            $c->stash->{'remote_user'}= $c->user();
         }
     }
 
@@ -195,13 +192,6 @@ sub begin {
         $path =~ s/nav=1//gmx;
         return $c->redirect_to($c->stash->{'url_prefix'}."frame.html?link=".uri_escape($path));
     }
-
-    # icon image path
-    $c->config->{'logo_path_prefix'} = exists $c->config->{'logo_path_prefix'} ? $c->config->{'logo_path_prefix'} : $c->stash->{'url_prefix'}.'themes/'.$c->stash->{'theme'}.'/images/logos/';
-    $c->stash->{'logo_path_prefix'}  = $c->config->{'logo_path_prefix'};
-
-    # additional views on status pages
-    $c->stash->{'additional_views'} = $Thruk::Utils::Status::additional_views || {};
 
     # sound cookie set?
     if(defined $c->request->cookie('thruk_sounds')) {
@@ -225,19 +215,6 @@ sub begin {
         }
     }
 
-    if( defined $c->request->cookie('thruk_auth') ) {
-        $c->stash->{'cookie_auth'} = 1;
-    }
-
-    # view mode must be a scalar
-    for my $key (qw/view_mode hidesearch hidetop style/) {
-        if($c->{'request'}->{'parameters'}->{$key}) {
-            if(ref $c->{'request'}->{'parameters'}->{$key} eq 'ARRAY') {
-                $c->{'request'}->{'parameters'}->{$key} = pop(@{$c->{'request'}->{'parameters'}->{$key}});
-            }
-        }
-    }
-
     # clean up changes in cookie paths
     # REMOVE AFTER: 01.01.2016
     if($c->request->{'headers'}->{'cookie'}) {
@@ -257,9 +234,6 @@ sub begin {
         }
     }
 
-    # make private _ hash keys available
-    $Template::Stash::PRIVATE = undef;
-
     # bypass shadownaemon by url
     $ENV{'THRUK_USE_SHADOW'} = 1;
     $ENV{'THRUK_USE_SHADOW'} = 0 if $c->{'request'}->{'parameters'}->{'nocache'};
@@ -270,6 +244,7 @@ sub begin {
 
 
     if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'FastCGI') {
+        # TODO: check...
         if($c->config->{'max_process_memory'} && $Catalyst::COUNT && $Catalyst::COUNT%10 == 0) {
             $c->run_after_request('Thruk::Utils::check_memory_usage($c);');
         }
@@ -416,6 +391,8 @@ sub end {
 
     add default values and create backend connections
 
+    runs after before()
+
 =cut
 
 sub add_defaults {
@@ -427,10 +404,6 @@ sub add_defaults {
     $c->stats->profile(begin => "AddDefaults::add_defaults");
 
     $c->stash->{'defaults_added'} = 1;
-
-    ###############################
-    # parse cgi.cfg
-    Thruk::Utils::read_cgi_cfg($c);
 
     ###############################
     $c->stash->{'escape_html_tags'}      = exists $c->config->{'cgi_cfg'}->{'escape_html_tags'}  ? $c->config->{'cgi_cfg'}->{'escape_html_tags'}  : 1;
@@ -448,32 +421,59 @@ sub add_defaults {
         $c->stash->{'enable_icinga_features'} = $c->config->{'enable_icinga_features'};
     }
 
-    ###############################
-    # Authentication
-    $c->log->debug("checking auth");
-    if($c->req->url->path =~ m~cgi-bin/remote\.cgi~mx) {
-        $c->log->debug("remote.cgi does not use authentication");
-    }
-    elsif($c->req->url->path =~ m~cgi-bin/login\.cgi~mx) {
-        $c->log->debug("login.cgi does not use authentication");
-    } else {
-        unless ($c->user_exists) {
-            $c->log->debug("user not authenticated yet");
-            unless ($c->authenticate( {} )) {
-                # return 403 forbidden or kick out the user in other way
-                $c->log->debug("user is not authenticated");
-                return $c->detach('/error/index/10');
-            };
+    # initialize our backends
+    unless ( defined $c->{'db'} ) {
+        $c->{'db'} = $c->app->{'db'};
+        if( defined $c->{'db'} ) {
+            $c->{'db'}->init(
+                'backend_debug' => $c->config->{'backend_debug'},
+            );
         }
-        $c->log->debug("user authenticated as: ".$c->user());
-        if($c->user_exists) {
-            $c->stash->{'remote_user'}= $c->user();
+    }
+
+    ###############################
+    # redirect to error page unless we have a connection
+    if(    !defined $c->{'db'}
+        or !defined $c->{'db'}->{'backends'}
+        or ref $c->{'db'}->{'backends'} ne 'ARRAY'
+        or scalar @{$c->{'db'}->{'backends'}} == 0 ) {
+
+        my $product_prefix = $c->config->{'product_prefix'};
+
+        # return here for static content, no backend needed
+        if(   $c->request->action =~ m|$product_prefix/\w+\.html|mx
+           or $c->request->action =~ m|$product_prefix\/\w+\.html|mx
+           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/conf\.cgi|mx
+           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/remote\.cgi|mx
+           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/login\.cgi|mx
+           or $c->request->action =~ m|$product_prefix\/cgi\-bin\/restricted\.cgi|mx
+           or $c->request->action eq '/'
+           or $c->request->action eq $product_prefix
+           or $c->request->action eq $product_prefix.'/docs'
+           or $c->request->action eq $product_prefix.'\\/docs\\/' ) {
+            $c->stash->{'no_auto_reload'} = 1;
+            return;
+        }
+        # redirect to backends manager if admin user
+        if( $c->config->{'use_feature_configtool'} ) {
+            $c->{'request'}->{'parameters'}->{'sub'} = 'backends';
+            return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/conf.cgi?sub=backends");
+        } else {
+            return $c->detach("/error/index/14");
         }
     }
 
     ###############################
     # no backend?
     return unless defined $c->{'db'};
+
+    # set check_local_states
+    unless(defined $c->config->{'check_local_states'}) {
+        $c->config->{'check_local_states'} = 0;
+        if(scalar @{$c->{'db'}->{'backends'}} > 1) {
+            $c->config->{'check_local_states'} = 1;
+        }
+    }
 
     ###############################
     # read cached data

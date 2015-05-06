@@ -43,7 +43,13 @@ sub render_tt {
         $_[1]->app->renderer->default_handler('ep');
         confess("no _template set!")
     }
-    $template->context->{'LOAD_TEMPLATES'}->[0]->{'INCLUDE_PATH'} = [ @{$_[1]->stash->{'additional_template_paths'}}, $_[1]->config->{'View::TT'}->{'INCLUDE_PATH'}];
+
+    if($_[1]->stash->{'additional_template_paths'}) {
+        $template->context->{'LOAD_TEMPLATES'}->[0]->{'INCLUDE_PATH'} =
+            [ @{$_[1]->stash->{'additional_template_paths'}},
+                $_[1]->config->{'View::TT'}->{'INCLUDE_PATH'}
+            ];
+    }
 
 # TODO: remove
 for my $forbidden (qw/action app cb controller data extends format handler json layout namespace path status template text variant/) {
@@ -51,12 +57,19 @@ for my $forbidden (qw/action app cb controller data extends format handler json 
 }
     $template->process(
         $_[1]->stash->{'_template'},
-        { %{ $_[1]->stash }, c => $_[1] },
+        $_[1]->stash,
         $_[2],
     ) || do {
-        $_[1]->log->error($template->error);
-        $_[1]->error($template->error);
-        return($_[1]->detach("/error/index/13"));
+        my $err = $template->error.' on '.$_[1]->stash->{'_template'};
+        $_[1]->log->error($err);
+        $_[1]->error($err);
+        if($_[1]->{'errored'}) {
+            # error happenend on the error page itself
+            $_[1]->app->renderer->default_handler('ep');
+            confess($err);
+        } else {
+            return($_[1]->detach("/error/index/13"));
+        }
     };
     return $_[2];
 }
