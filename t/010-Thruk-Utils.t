@@ -60,7 +60,6 @@ my $sorted_by_abc_exp = [
 ];
 #########################
 # initialize backend manager
-my $m;
 use_ok 'Thruk::Backend::Manager';
 my $b = Thruk::Backend::Manager->new();
 isa_ok($b, 'Thruk::Backend::Manager');
