@@ -64,7 +64,7 @@ sub _show_step_2 {
     }
 
     $c->stash->{input}       = $input;
-    $c->stash->{data}        = $data;
+    $c->stash->{_data}       = $data;
     $c->stash->{_template}   = 'trends_step_2.tt';
 
     return 1;

@@ -147,6 +147,7 @@ our %config = ('name'                   => 'Thruk',
                                           'space'          => ' ',
                                           'debug_info'     => '',
                                           'has_jquery_ui'  => 0,
+                                          'enable_shinken_features' => 0,
                                           'fix_cookies'    => [],
                                           'uri_filter'     => {
                                                 'bookmark'      => undef,

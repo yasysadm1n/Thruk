@@ -1250,7 +1250,7 @@ save excel file by background job
 sub logs2xls {
     my($c) = @_;
     Thruk::Utils::Status::set_selected_columns($c);
-    $c->stash->{'data'} = $c->{'db'}->get_logs(%{$c->stash->{'log_filter'}});
+    $c->stash->{'_data'} = $c->{'db'}->get_logs(%{$c->stash->{'log_filter'}});
     savexls($c);
     return;
 }

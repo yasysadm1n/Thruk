@@ -1917,7 +1917,7 @@ sub get_service_matrix {
     Thruk::Backend::Manager::_page_data(undef, $c, \@keys);
     @keys = (); # empty
     my $filter = [];
-    for my $host_name (@{$c->stash->{'data'}}) {
+    for my $host_name (@{$c->stash->{'_data'}}) {
         push @{$filter}, { 'host_name' => $host_name };
     }
     $hostfilter = Thruk::Utils::combine_filter( '-or', $filter );

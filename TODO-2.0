@@ -3,6 +3,8 @@
  - $c->user->get('username') => $c->user()
  - template => _template (http://search.cpan.org/~sri/Mojolicious-6.10/lib/Mojolicious/Controller.pm#stash)
    - write test
+   - data => _data
+   - text => _text
  - $c->{'canceled'} ??
  - $c->response->redirect  -> $c->redirect_to
  - $c->res->headers->content_type

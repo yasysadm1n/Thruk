@@ -1378,14 +1378,14 @@ sub _task_hosts {
             { 'header' => 'Last Time Unreachable', dataIndex => 'last_time_unreachable', hidden => JSON::XS::true, renderer => 'TP.render_date' },
             { 'header' => 'Last Time Down',        dataIndex => 'last_time_down',        hidden => JSON::XS::true, renderer => 'TP.render_date' },
         ],
-        data        => $c->stash->{'data'},
+        data        => $c->stash->{'_data'},
         totalCount  => $c->stash->{'pager'}->{'total_entries'},
         currentPage => $c->stash->{'pager'}->{'current_page'},
         paging      => JSON::XS::true,
     };
 
     if($c->stash->{'escape_html_tags'} or $c->stash->{'show_long_plugin_output'} eq 'inline') {
-        for my $h ( @{$c->stash->{'data'}}) {
+        for my $h ( @{$c->stash->{'_data'}}) {
             _escape($h)      if $c->stash->{'escape_html_tags'};
             _long_plugin($h) if $c->stash->{'show_long_plugin_output'} eq 'inline';
         }
@@ -1469,14 +1469,14 @@ sub _task_services {
             { 'header' => 'Last Time Unknown',  dataIndex => 'last_time_unknown',  hidden => JSON::XS::true, renderer => 'TP.render_date' },
             { 'header' => 'Last Time Critical', dataIndex => 'last_time_critical', hidden => JSON::XS::true, renderer => 'TP.render_date' },
         ],
-        data        => $c->stash->{'data'},
+        data        => $c->stash->{'_data'},
         totalCount  => $c->stash->{'pager'}->{'total_entries'},
         currentPage => $c->stash->{'pager'}->{'current_page'},
         paging      => JSON::XS::true,
     };
 
     if($c->stash->{'escape_html_tags'} or $c->stash->{'show_long_plugin_output'} eq 'inline') {
-        for my $s ( @{$c->stash->{'data'}}) {
+        for my $s ( @{$c->stash->{'_data'}}) {
             _escape($s)      if $c->stash->{'escape_html_tags'};
             _long_plugin($s) if $c->stash->{'show_long_plugin_output'} eq 'inline';
         }
@@ -1722,7 +1722,7 @@ sub _task_pnp_graphs {
     $c->{'db'}->_page_data($c, $graphs);
 
     my $json = {
-        data        => $c->stash->{'data'},
+        data        => $c->stash->{'_data'},
         total       => $c->stash->{'pager'}->{'total_entries'},
         currentPage => $c->stash->{'pager'}->{'current_page'},
         paging      => JSON::XS::true,
@@ -1755,7 +1755,7 @@ sub _task_userdata_backgroundimages {
     unshift @{$images}, { path => $c->stash->{'url_prefix'}.'plugins/panorama/images/s.gif', image => 'none'} unless($query);
     $c->{'db'}->_page_data($c, $images);
     my $json = {
-        data        => $c->stash->{'data'},
+        data        => $c->stash->{'_data'},
         total       => $c->stash->{'pager'}->{'total_entries'},
         currentPage => $c->stash->{'pager'}->{'current_page'},
         paging      => JSON::XS::true,
@@ -1786,7 +1786,7 @@ sub _task_userdata_images {
     $images = Thruk::Backend::Manager::_sort({}, $images, 'path');
     $c->{'db'}->_page_data($c, $images);
     my $json = {
-        data        => $c->stash->{'data'},
+        data        => $c->stash->{'_data'},
         total       => $c->stash->{'pager'}->{'total_entries'},
         currentPage => $c->stash->{'pager'}->{'current_page'},
         paging      => JSON::XS::true,

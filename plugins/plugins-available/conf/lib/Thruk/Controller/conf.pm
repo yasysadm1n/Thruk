@@ -480,7 +480,7 @@ sub _process_cgi_page {
     ];
 
     $c->stash->{'keys'}      = $keys;
-    $c->stash->{'data'}      = $data;
+    $c->stash->{'_data'}     = $data;
     $c->stash->{'md5'}       = $md5;
     $c->stash->{'subtitle'}  = "CGI &amp; Access Configuration";
     $c->stash->{'_template'} = 'conf_data.tt';
@@ -583,7 +583,7 @@ sub _process_thruk_page {
     ];
 
     $c->stash->{'keys'}      = $keys;
-    $c->stash->{'data'}      = $data;
+    $c->stash->{'_data'}     = $data;
     $c->stash->{'md5'}       = $md5;
     $c->stash->{'subtitle'}  = "Thruk Configuration";
     $c->stash->{'_template'} = 'conf_data.tt';
@@ -2068,7 +2068,7 @@ sub _file_history_commit {
     $data->{'diff'} =~ s/^\s+//gmx;
 
     $c->stash->{'dir'}    = $dir;
-    $c->stash->{'data'}   = $data;
+    $c->stash->{'_data'}  = $data;
     $c->stash->{'links'}  = $diff_link_files;
 
     return 1;

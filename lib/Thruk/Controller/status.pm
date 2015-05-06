@@ -228,7 +228,7 @@ sub _process_raw_request {
                 my $total = scalar @{$data};
                 Thruk::Backend::Manager::_page_data(undef, $c, $data);
                 my $list = [];
-                for my $d (@{$c->stash->{'data'}}) { push @{$list}, { 'text' => $d } };
+                for my $d (@{$c->stash->{'_data'}}) { push @{$list}, { 'text' => $d } };
                 $json = { 'data' => $list, 'total' => $total };
             }
             return $c->render(json => $json);

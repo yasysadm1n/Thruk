@@ -131,7 +131,7 @@ sub index {
         if(defined $data) {
             my $json = {};
             if(ref $data eq 'ARRAY') {
-                $data = $c->stash->{'data'} if defined $c->stash->{'data'};
+                $data = $c->stash->{'_data'} if defined $c->stash->{'_data'};
 # TODO: check
                 $c->stash->{'json'}->{'more'} = 1 if($page < ($c->stash->{'pages'} || 1));
             }

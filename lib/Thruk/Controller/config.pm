@@ -25,6 +25,8 @@ Mojolicious Controller.
 sub index {
     my ( $c ) = @_;
 
+    Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_CACHED_DEFAULTS);
+
     $c->stash->{title}            = 'Configuration';
     $c->stash->{infoBoxTitle}     = 'Configuration';
     $c->stash->{page}             = 'config';

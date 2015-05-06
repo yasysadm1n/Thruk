@@ -438,7 +438,6 @@ sub add_defaults {
     $c->stash->{'info_popup_event_type'} = $c->config->{'info_popup_event_type'} || 'onmouseover';
 
     ###############################
-    $c->stash->{'enable_shinken_features'} = 0;
     if(exists $c->config->{'enable_shinken_features'}) {
         $c->stash->{'enable_shinken_features'} = $c->config->{'enable_shinken_features'};
     }

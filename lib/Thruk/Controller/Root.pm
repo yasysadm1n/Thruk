@@ -261,7 +261,6 @@ sub thruk_main_html {
     $c->stash->{'_template'}               = 'main.tt';
     $c->stash->{'hide_backends_chooser'}   = 1;
     $c->stash->{'no_auto_reload'}          = 1;
-    $c->stash->{'enable_shinken_features'} = 0;
 
     return 1;
 }

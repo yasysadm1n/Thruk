@@ -362,7 +362,7 @@ sub _display_alert_totals {
         }
     }
 
-    $c->stash->{'data'} = $totals;
+    $c->stash->{'_data'} = $totals;
 
     $c->stats->profile(end => "_display_alert_totals()");
     return 1;
