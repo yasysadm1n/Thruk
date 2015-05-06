@@ -107,7 +107,7 @@ sub get_c {
     my($self) = @_;
     return $Thruk::Utils::CLI::c if defined $Thruk::Utils::CLI::c;
     #my($c, $failed)
-    my($c, undef) = $self->_dummy_c();
+    my($c, undef, undef) = $self->_dummy_c();
     $Thruk::Utils::CLI::c = $c;
     $c->stats->enable(1);
     return $c;
@@ -206,46 +206,31 @@ sub request_url {
         return $result->{'result'};
     }
 
-    local $ENV{'REQUEST_URI'}      = $url;
-    local $ENV{'SCRIPT_NAME'}      = $url;
-          $ENV{'SCRIPT_NAME'}      =~ s/\?(.*)$//gmx;
-    local $ENV{'QUERY_STRING'}     = $1 if defined $1;
-    local $ENV{'SERVER_PROTOCOL'}  = 'HTTP/1.0'  unless defined $ENV{'SERVER_PROTOCOL'};
-    local $ENV{'REQUEST_METHOD'}   = 'GET'       unless defined $ENV{'REQUEST_METHOD'};
-    local $ENV{'HTTP_HOST'}        = '127.0.0.1' unless defined $ENV{'HTTP_HOST'};
-    local $ENV{'REMOTE_ADDR'}      = '127.0.0.1' unless defined $ENV{'REMOTE_ADDR'};
-    local $ENV{'SERVER_PORT'}      = '80'        unless defined $ENV{'SERVER_PORT'};
     local $ENV{'REMOTE_USER'}      = $c->stash->{'remote_user'} if(!$ENV{'REMOTE_USER'} and $c->stash->{'remote_user'});
     local $ENV{'NO_EXTERNAL_JOBS'} = 1;
-
-    # reset args, otherwise they will be interpreted as args for the script runner
-    @ARGV = ();
 
     # fork setting may be overriden in child requests
     my $old_no_external_job_forks = $c->config->{'no_external_job_forks'};
 
-    require Catalyst::ScriptRunner;
-    Catalyst::ScriptRunner->import();
-    Catalyst::ScriptRunner->run('Thruk', 'Thrukembedded');
-    my $result = $Plack::Handler::Thrukembedded::http_result;
+    my(undef, undef, $res) = _dummy_c(undef, $url);
 
+    my $result = {
+        code    => $res->code,
+        result  => $res->decoded_content || $res->content,
+        headers => $res->headers,
+    };
     if($result->{'code'} == 302
        and defined $result->{'headers'}
-       and defined $result->{'headers'}->{'Location'}
-       and $result->{'headers'}->{'Location'} =~ m|/cgi\-bin/job\.cgi\?job=(.*)$|mx) {
+       and defined $result->{'headers'}->{'location'}
+       and $result->{'headers'}->{'location'} =~ m|/cgi\-bin/job\.cgi\?job=(.*)$|mx) {
         my $jobid = $1;
         my $x = 0;
         while($result->{'code'} == 302 or $result->{'result'} =~ m/thruk:\ waiting\ for\ job\ $jobid/mx) {
             my $sleep = 0.1 * $x;
             $sleep = 1 if $x > 10;
             sleep($sleep);
-            $url = $result->{'headers'}->{'Location'} if defined $result->{'headers'}->{'Location'};
-            local $ENV{'REQUEST_URI'}      = $url;
-            local $ENV{'SCRIPT_NAME'}      = $url;
-                  $ENV{'SCRIPT_NAME'}      =~ s/\?(.*)$//gmx;
-            local $ENV{'QUERY_STRING'}     = $1 if defined $1;
-            Catalyst::ScriptRunner->run('Thruk', 'Thrukembedded');
-            $result = $Plack::Handler::Thrukembedded::http_result;
+            $url = $result->{'headers'}->{'location'} if defined $result->{'headers'}->{'location'};
+            (undef, undef, $result) = _dummy_c(undef, $url);
             $x++;
         }
     }
@@ -254,17 +239,18 @@ sub request_url {
     $c->config->{'no_external_job_forks'} = $old_no_external_job_forks;
 
     if($result->{'code'} == 302
-          and defined $result->{'headers'}->{'Set-Cookie'}
-          and $result->{'headers'}->{'Set-Cookie'} =~ m/^thruk_message=(.*)%7E%7E(.*);\ path=/mxo
+          and defined $result->{'headers'}->{'set-cookie'}
+          and $result->{'headers'}->{'set-cookie'} =~ m/^thruk_message="?(.*)(%7E%7E|~~)(.*)"?;\ path=/mxo
     ) {
         require URI::Escape;
-        my $txt = URI::Escape::uri_unescape($2);
+        my $txt = URI::Escape::uri_unescape($3);
         my $msg = '';
         if($1 eq 'success_message') {
             $msg = 'OK';
         } else {
             $msg = 'FAILED';
         }
+        $txt    =~ s/"\s*$//gmx;
         $txt = $msg.' - '.$txt."\n";
         return($result->{'code'}, $result, $txt) if wantarray;
         return $txt;
@@ -445,26 +431,25 @@ sub _external_request {
 
 ##############################################
 sub _dummy_c {
-    my($self) = @_;
+    my($self, $url) = @_;
     _debug("_dummy_c()") if $Thruk::Utils::CLI::verbose >= 2;
     delete local $ENV{'CATALYST_SERVER'} if defined $ENV{'CATALYST_SERVER'};
-    # TODO: use mojo cgi
-    require Test::Mojo;
+    $url = '/thruk/cgi-bin/remote.cgi' unless defined $url;
+    require Mojo::Server;
     require HTTP::Response;
-    # temporary close stderr because ubuntu 12.04 (and maybe others) print
-    # Error opening file for reading: Permission denied
-    # due to permission errors on /proc/self/auxv after setuid
+    my $server = Mojo::Server->new();
 #    open(my $saveerr, ">&STDERR") if $Thruk::Utils::CLI::verbose <= 1;
 #    close(STDERR)                 if $Thruk::Utils::CLI::verbose <= 1;
-    my $mojo = Test::Mojo->new('Thruk');
+    my $app    = $server->build_app('Thruk');
+    my $tx     = $app->ua->build_tx(GET => $url);
+    $app->ua->start($tx);
 #    open(STDERR, ">&", $saveerr)  if $Thruk::Utils::CLI::verbose <= 1;
-    my $tx   = $mojo->ua->build_tx(GET => '/thruk/cgi-bin/remote.cgi');
-    my $test = $mojo->tx($mojo->ua->start($tx));
     my $res  = HTTP::Response->parse($tx->res->to_string);
-    my $c    = $mojo->tx;
+    my $c    = $Thruk::Request::c;
+    $c->tx($tx);
     my $failed = ( $res->code == 200 ? 0 : 1 );
     _debug("_dummy_c() done") if $Thruk::Utils::CLI::verbose >= 2;
-    return($c, $failed);
+    return($c, $failed, $res);
 }
 
 ##############################################

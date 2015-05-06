@@ -96,6 +96,7 @@ sub startup {
     $self->plugin('Thruk::ToolkitRenderer', {config => $config->{'View::TT'}});
     $self->plugin('Thruk::JSONRenderer', {});
     $self->plugin('Thruk::ExcelRenderer', {config => $config->{'View::Excel::Template::Plus'}});
+    $self->plugin('Thruk::GDRenderer', {});
     $self->renderer->default_handler('tt');
 
     _init_logging($self, $config);
@@ -173,6 +174,7 @@ sub startup {
     $self->helper('check_permissions'           => sub { return(1) });
     $self->helper('check_cmd_permissions'       => sub { return(1) });
     $self->helper('check_user_roles_wrapper'    => sub { return(1) });
+    $self->helper('authenticate'                => sub { return(1) });
 
 
     ###################################################
@@ -210,6 +212,20 @@ sub startup {
 sub config {
     $config = Thruk::Config::get_config() unless defined $config;
     return($config);
+}
+
+###################################################
+
+=head2 debug
+
+    make debug accessible via Thruk->debug
+
+=cut
+sub debug {
+    if($ENV{'THRUK_VERBOSE'} || $ENV{'MORBO_VERBOSE'}) {
+        return(1);
+    }
+    return(0);
 }
 
 ###################################################
@@ -347,7 +363,7 @@ sub _init_logging {
     }
     else {
         $self->helper('log' => sub { return($self->log) });
-        if(!$ENV{'THRUK_VERBOSE'} && !$ENV{'MORBO_VERBOSE'}) {
+        if(!Thruk->debug) {
             $self->log->level('info');
         }
     }

@@ -68,10 +68,16 @@ sub request {
 #########################
 sub ctx_request {
     my($url) = @_;
-    my $tx   = $mojo->ua->build_tx(GET => $url);
-    my $test = $mojo->tx($mojo->ua->start($tx));
-    my $res = HTTP::Response->parse($tx->res->to_string);
-    return($res, $mojo->ua->server->app);
+    require Mojo::Server;
+    require HTTP::Response;
+    my $server = Mojo::Server->new();
+    my $app    = $server->build_app('Thruk');
+    my $tx     = $app->build_tx(GET => $url);
+    $app->ua->start($tx);
+    my $res  = HTTP::Response->parse($tx->res->to_string);
+    my $c    = $Thruk::Request::c;
+    $c->tx($tx);
+    return($res, $c);
 }
 
 #########################

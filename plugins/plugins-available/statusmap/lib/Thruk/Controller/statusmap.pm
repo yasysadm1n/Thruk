@@ -152,7 +152,7 @@ sub index {
 
     #my $coder = JSON::XS->new->utf8->pretty;  # with indention (bigger and not valid js code)
     my $coder = JSON::XS->new->utf8->shrink;   # shortest possible
-    $c->stash->{json}          = decode_utf8($coder->encode($json));
+    $c->stash->{_json}         = decode_utf8($coder->encode($json));
 
     $c->stash->{title}         = 'Network Map';
     $c->stash->{page}          = 'statusmap';

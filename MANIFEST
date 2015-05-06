@@ -43,6 +43,7 @@ inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/FCGI/ProcManager/MaxRequestsThruk.pm
 lib/Mojolicious/Plugin/Thruk/ExcelRenderer.pm
+lib/Mojolicious/Plugin/Thruk/GDRenderer.pm
 lib/Mojolicious/Plugin/Thruk/JSONRenderer.pm
 lib/Mojolicious/Plugin/Thruk/ToolkitRenderer.pm
 lib/Monitoring/Availability.pm
@@ -1221,6 +1222,7 @@ t/087-trailing_whitespace.t
 t/088-remove_after.t
 t/089-patches.t
 t/090-io.t
+t/091-mojolicious.t
 t/092-clean_debug.t
 t/092-stash-config.t
 t/092-thruk-view-json.t

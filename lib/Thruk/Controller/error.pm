@@ -202,7 +202,6 @@ sub index {
         $c->stash->{errorDetails} .= join('<br>', @{$c->error});
     }
 
-    $c->stash->{'status'} = $code;
     unless(defined $ENV{'TEST_ERROR'}) { # supress error logging in test mode
         if($code >= 500) {
             $c->log->error($errors->{$arg1}->{'mess'});

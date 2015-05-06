@@ -18,7 +18,6 @@ requires 'Mojolicious'                            => 0;     # required by Thruk
 requires 'Mojo::Base'                             => 0;     # required by Thruk
 requires 'JSON::XS'                               => 0;     # required by Thruk::View::JSON
 requires 'Config::General'                        => 0;     # required by Thruk::Utils
-requires 'LWP::UserAgent'                         => 0;     # required by Thruk::Utils::CLI
 requires 'HTTP::Response'                         => 0;     # required by Thruk::UserAgent
 requires 'Net::HTTP'                              => 6.02;  # required for HTTP connections. Version required due to timeout bug
 requires 'URI::Escape'                            => 0;     # required by Thruk::Controller::Root
@@ -64,13 +63,6 @@ feature     ('plugin_reports2',
   -default                                        => 0,
   'MIME::Lite'                                    => 0,
   'Class::Inspector'                              => 0,
-);
-
-# https backends support
-feature     ('https_backends_support',
-  -default                                        => 0,
-  'LWP::Protocol::https'                          => 0,     # required by Thruk::Backend::Provider::HTTP
-  'LWP::Protocol::connect'                        => 0,     # required by Thruk::Backend::Provider::HTTP
 );
 
 # mysql logcache support

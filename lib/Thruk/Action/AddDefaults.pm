@@ -831,7 +831,7 @@ sub _disable_backends_by_group {
         if(defined $peer->{'groups'}) {
             for my $group (split/\s*,\s*/mx, $peer->{'groups'}) {
                 if(defined $contactgroups->{$group}) {
-                    $c->log->debug("found contact ".$c->user->get('username')." in contactgroup ".$group);
+                    $c->log->debug("found contact ".$c->user()." in contactgroup ".$group);
                     # delete old completly hidden state
                     delete $disabled_backends->{$peer->{'key'}};
                     # but disabled by cookie?

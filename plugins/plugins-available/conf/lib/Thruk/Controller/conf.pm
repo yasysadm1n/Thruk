@@ -111,8 +111,8 @@ sub index { # Safe Defaults required for changing backends
         Thruk::Utils::set_message( $c, 'fail_message', 'Config Tool is disabled.<br>Please have a look at the <a href="'.$c->stash->{'url_prefix'}.'documentation.html#_component_thruk_plugin_configtool">config tool setup instructions</a>.' );
     }
 
-    my $subcat                = $c->{'request'}->{'parameters'}->{'sub'} || '';
-    my $action                = $c->{'request'}->{'parameters'}->{'action'}  || 'show';
+    my $subcat = $c->{'request'}->{'parameters'}->{'sub'} || '';
+    my $action = $c->{'request'}->{'parameters'}->{'action'}  || 'show';
 
     if(exists $c->{'request'}->{'parameters'}->{'edit'} and defined $c->{'request'}->{'parameters'}->{'host'}) {
         $subcat = 'objects';
@@ -122,7 +122,7 @@ sub index { # Safe Defaults required for changing backends
     $subcat = shift @{$subcat} if ref $subcat eq 'ARRAY';
 
     $c->stash->{sub}          = $subcat;
-    $c->stash->{action}       = $action;
+    $c->stash->{_action}      = $action;
     $c->stash->{conf_config}  = $c->config->{'Thruk::Plugin::ConfigTool'} || {};
     $c->stash->{has_obj_conf} = scalar keys %{Thruk::Utils::Conf::get_backends_with_obj_config($c)};
 
@@ -407,7 +407,7 @@ sub _process_cgi_page {
     my $defaults = Thruk::Utils::Conf::Defaults->get_cgi_cfg();
 
     # save changes
-    if($c->stash->{action} eq 'store') {
+    if($c->stash->{_action} eq 'store') {
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
             return $c->redirect_to('conf.cgi?sub=cgi');
@@ -499,7 +499,7 @@ sub _process_thruk_page {
     $c->stash->{'readonly'} = (-w $file) ? 0 : 1;
 
     # save changes
-    if($c->stash->{action} eq 'store') {
+    if($c->stash->{_action} eq 'store') {
         if($c->stash->{'readonly'}) {
             Thruk::Utils::set_message( $c, 'fail_message', 'file is readonly' );
             return $c->redirect_to('conf.cgi?sub=thruk');
@@ -603,7 +603,7 @@ sub _process_users_page {
 
     # save changes to user
     my $user = $c->{'request'}->{'parameters'}->{'data.username'} || '';
-    if($user ne '' and defined $file and $c->stash->{action} eq 'store') {
+    if($user ne '' and defined $file and $c->stash->{_action} eq 'store') {
         return unless Thruk::Utils::check_csrf($c);
         my $redirect = 'conf.cgi?action=change&sub=users&data.username='.$user;
         if($c->stash->{'readonly'}) {
@@ -642,7 +642,7 @@ sub _process_users_page {
     $c->stash->{'show_user'}  = 0;
     $c->stash->{'user_name'}  = '';
 
-    if($c->stash->{action} eq 'change' and $user ne '') {
+    if($c->stash->{_action} eq 'change' and $user ne '') {
         my($content, $data, $md5) = Thruk::Utils::Conf::read_conf($file, $defaults);
         my($name, $alias)         = split(/\ \-\ /mx,$user, 2);
         $c->stash->{'show_user'}  = 1;
@@ -707,7 +707,7 @@ sub _process_plugins_page {
         $c->stash->{'readonly'}  = 1;
     }
 
-    if($c->stash->{action} eq 'preview') {
+    if($c->stash->{_action} eq 'preview') {
         my $pic = $c->{'request'}->{'parameters'}->{'pic'} || die("missing pic");
         if($pic !~ m/^[a-zA-Z0-9_\ \-]+$/gmx) {
             die("unknown pic: ".$pic);
@@ -721,7 +721,7 @@ sub _process_plugins_page {
         $c->stash->{'_template'} = 'passthrough.tt';
         return 1;
     }
-    elsif($c->stash->{action} eq 'save') {
+    elsif($c->stash->{_action} eq 'save') {
         return unless Thruk::Utils::check_csrf($c);
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
@@ -791,7 +791,7 @@ sub _process_backends_page {
     }
     $c->stash->{'readonly'} = (-w $file) ? 0 : 1;
 
-    if($c->stash->{action} eq 'save') {
+    if($c->stash->{_action} eq 'save') {
         return unless Thruk::Utils::check_csrf($c);
         # don't store in demo mode
         if($c->config->{'demo_mode'}) {
@@ -845,7 +845,7 @@ sub _process_backends_page {
         Thruk::Utils::set_message( $c, 'success_message', 'Backends changed successfully.' );
         return Thruk::Utils::restart_later($c, $c->stash->{url_prefix}.'cgi-bin/conf.cgi?sub=backends');
     }
-    if($c->stash->{action} eq 'check_con') {
+    if($c->stash->{_action} eq 'check_con') {
         return unless Thruk::Utils::check_csrf($c);
         my $peer        = $c->request->parameters->{'peer'};
         my $type        = $c->request->parameters->{'type'};
@@ -964,13 +964,13 @@ sub _process_objects_page {
     if(defined $obj) {
 
         # revert all changes from one file
-        if($c->stash->{action} eq 'revert') {
+        if($c->stash->{_action} eq 'revert') {
             return unless Thruk::Utils::check_csrf($c);
             return if _object_revert($c, $obj);
         }
 
         # save this object
-        elsif($c->stash->{action} eq 'store') {
+        elsif($c->stash->{_action} eq 'store') {
             return unless Thruk::Utils::check_csrf($c);
             my $rc = _object_save($c, $obj);
             if($rc && defined $c->{'request'}->{'parameters'}->{'cloned'}) {
@@ -986,91 +986,91 @@ sub _process_objects_page {
         }
 
         # disable this object temporarily
-        elsif($c->stash->{action} eq 'disable') {
+        elsif($c->stash->{_action} eq 'disable') {
             return unless Thruk::Utils::check_csrf($c);
             return if _object_disable($c, $obj);
         }
 
         # enable this object
-        elsif($c->stash->{action} eq 'enable') {
+        elsif($c->stash->{_action} eq 'enable') {
             return unless Thruk::Utils::check_csrf($c);
             return if _object_enable($c, $obj);
         }
 
         # delete this object
-        elsif($c->stash->{action} eq 'delete') {
+        elsif($c->stash->{_action} eq 'delete') {
             return unless Thruk::Utils::check_csrf($c);
             return if _object_delete($c, $obj);
         }
 
         # move objects
-        elsif(   $c->stash->{action} eq 'move'
-              or $c->stash->{action} eq 'movefile') {
+        elsif(   $c->stash->{_action} eq 'move'
+              or $c->stash->{_action} eq 'movefile') {
             return if _object_move($c, $obj);
         }
 
         # clone this object
-        elsif($c->stash->{action} eq 'clone') {
+        elsif($c->stash->{_action} eq 'clone') {
             return unless Thruk::Utils::check_csrf($c);
             $c->stash->{cloned} = $obj->get_id() || 0;
             $obj = _object_clone($c, $obj);
         }
 
         # list services for host
-        elsif($c->stash->{action} eq 'listservices' and $obj->get_type() eq 'host') {
+        elsif($c->stash->{_action} eq 'listservices' and $obj->get_type() eq 'host') {
             return if _host_list_services($c, $obj);
         }
 
         # list references
-        elsif($c->stash->{action} eq 'listref') {
+        elsif($c->stash->{_action} eq 'listref') {
             return if _list_references($c, $obj);
         }
     }
 
     # create new object
-    if($c->stash->{action} eq 'new') {
+    if($c->stash->{_action} eq 'new') {
         $obj = _object_new($c);
     }
 
     # browse files
-    elsif($c->stash->{action} eq 'browser') {
+    elsif($c->stash->{_action} eq 'browser') {
         return if _file_browser($c);
     }
 
     # object tree
-    elsif($c->stash->{action} eq 'tree') {
+    elsif($c->stash->{_action} eq 'tree') {
         return if _object_tree($c);
     }
 
     # object tree content
-    elsif($c->stash->{action} eq 'tree_objects') {
+    elsif($c->stash->{_action} eq 'tree_objects') {
         return if _object_tree_objects($c);
     }
 
     # file editor
-    elsif($c->stash->{action} eq 'editor') {
+    elsif($c->stash->{_action} eq 'editor') {
         return if _file_editor($c);
     }
 
     # history
-    elsif($c->stash->{action} eq 'history') {
+    elsif($c->stash->{_action} eq 'history') {
         return if _file_history($c);
     }
 
     # save changed files from editor
-    elsif($c->stash->{action} eq 'savefile') {
+    elsif($c->stash->{_action} eq 'savefile') {
         return unless Thruk::Utils::check_csrf($c);
         return if _file_save($c);
     }
 
     # delete files/folders from browser
-    elsif($c->stash->{action} eq 'deletefiles') {
+    elsif($c->stash->{_action} eq 'deletefiles') {
         return unless Thruk::Utils::check_csrf($c);
         return if _file_delete($c);
     }
 
     # undelete files/folders from browser
-    elsif($c->stash->{action} eq 'undeletefiles') {
+    elsif($c->stash->{_action} eq 'undeletefiles') {
         return unless Thruk::Utils::check_csrf($c);
         return if _file_undelete($c);
     }
@@ -1091,7 +1091,7 @@ sub _process_objects_page {
     }
 
     # set default type for start page
-    if($c->stash->{action} eq 'show' and $c->stash->{type} eq '') {
+    if($c->stash->{_action} eq 'show' and $c->stash->{type} eq '') {
         $c->stash->{type} = 'host';
     }
 
@@ -1221,7 +1221,7 @@ sub _process_tools_page {
     $c->stash->{'subtitle'}  = 'Config Tools';
     $c->stash->{'_template'} = 'conf_objects_tools.tt';
     $c->stash->{'output'}    = '';
-    $c->stash->{'action'}    = 'tools';
+    $c->stash->{'_action'}   = 'tools';
     $c->stash->{'results'}   = [];
     my $tool                 = $c->{'request'}->{'parameters'}->{'tools'} || '';
     $tool                    =~ s/[^a-zA-Z_]//gmx;
@@ -1761,7 +1761,7 @@ sub _object_save {
 
     # just display the normal edit page if save failed
     if($obj->get_id() eq 'new') {
-        $c->stash->{action} = '';
+        $c->stash->{_action} = '';
         return;
     }
 
@@ -1806,7 +1806,7 @@ sub _object_move {
     my($c, $obj) = @_;
 
     my $files_root = _set_files_stash($c, 1);
-    if($c->stash->{action} eq 'movefile') {
+    if($c->stash->{_action} eq 'movefile') {
         return unless Thruk::Utils::check_csrf($c);
         my $new_file = $c->{'request'}->{'parameters'}->{'newfile'};
         my $file     = _get_context_file($c, $obj, $new_file);
@@ -1825,7 +1825,7 @@ sub _object_move {
 
         return $c->redirect_to('conf.cgi?sub=objects&data.id='.$obj->get_id());
     }
-    elsif($c->stash->{action} eq 'move') {
+    elsif($c->stash->{_action} eq 'move') {
         $c->stash->{'_template'} = 'conf_objects_move.tt';
     }
     return;

@@ -401,7 +401,7 @@ sub _process_details_page {
 
     if( $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
-        $c->res->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
+        $c->res->headers->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
         $c->stash->{'_data'}     = $services;
         $c->stash->{'_template'} = 'excel/status_detail.tt';
         return $c->render_excel();

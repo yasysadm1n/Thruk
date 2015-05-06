@@ -86,7 +86,7 @@
 <!--
 
 var nodename = '[% nodename %]';
-var json     = '[% json %]';
+var json     = '[% _json %]';
 var groupby  = '[% groupby %]';
 var detail   = [% detail %];
 

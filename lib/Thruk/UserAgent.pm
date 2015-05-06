@@ -2,11 +2,11 @@ package Thruk::UserAgent;
 
 =head1 NAME
 
-Thruk::UserAgent - LWP::UserAgent wrapper for Thruk
+Thruk::UserAgent - UserAgent wrapper for Thruk
 
 =head1 DESCRIPTION
 
-LWP::UserAgent wrapper for Thruk
+UserAgent wrapper for Thruk
 
 =cut
 
@@ -31,8 +31,8 @@ sub new {
     my($class, $config) = @_;
     confess("no config") unless $config;
     if(!$config->{'use_curl'}) {
-        require LWP::UserAgent;
-        my $ua = LWP::UserAgent->new;
+        require Mojo::UserAgent;
+        my $ua = Mojo::UserAgent->new;
         return $ua;
     }
     my $self = {

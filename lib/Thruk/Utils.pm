@@ -573,6 +573,7 @@ sets the authorized_for_read_only role and group based roles
 sub set_dynamic_roles {
     my $c = shift;
 
+# TODO: check
     my $username = $c->request->{'user'}->{'username'};
     return unless defined $username;
 
@@ -1699,7 +1700,7 @@ sub set_user {
     my($c, $username) = @_;
     $c->stash->{'remote_user'} = $username;
     $c->authenticate({});
-    $c->stash->{'remote_user'}= $c->user->get('username');
+    $c->stash->{'remote_user'}= $c->user;
     set_dynamic_roles($c);
     return;
 }
