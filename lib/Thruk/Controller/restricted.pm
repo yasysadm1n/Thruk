@@ -20,7 +20,7 @@ Catalyst Controller.
 sub index {
     my ( $c ) = @_;
 
-    $c->res->content_type('text/plain');
+    $c->res->headers->content_type('text/plain');
     $c->stash->{'_template'} = 'passthrough.tt';
     $c->stash->{'_text'}     = 'FAIL';
 

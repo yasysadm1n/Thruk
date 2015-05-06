@@ -7,7 +7,7 @@
    - text => _text
  - $c->{'canceled'} ??
  - $c->response->redirect  -> $c->redirect_to
- - $c->res->headers->content_type
+ - $c->res->content_type   -> $c->res->headers->content_type
  - $c->forward("View::JSON"); return $c->render(json => $json);
  - $c->response->status()  -> $c->res->code()
  - $c->res->cookies->{'name'} = {...  ->  $c->cookie('name' => $val, { path  => ... });

@@ -597,7 +597,7 @@ sub _task_redirect_status {
 sub _task_textsave {
     my($c) = @_;
     $c->res->headers->header('Content-Disposition', qq[attachment; filename="log.txt"]);
-    $c->res->content_type('application/octet-stream');
+    $c->res->headers->content_type('application/octet-stream');
     $c->stash->{_text}     = $c->request->parameters->{'text'};
     $c->stash->{_template} = 'passthrough.tt';
     return;

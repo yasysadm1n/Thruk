@@ -691,7 +691,7 @@ sub _finished_job_page {
     my($c, $stash, $forward, $out) = @_;
     if(defined $stash and keys %{$stash} > 0) {
         $c->res->headers->header( @{$stash->{'res_header'}} ) if defined $stash->{'res_header'};
-        $c->res->content_type($stash->{'res_ctype'})          if defined $stash->{'res_ctype'};
+        $c->res->headers->content_type($stash->{'res_ctype'}) if defined $stash->{'res_ctype'};
         if(defined $stash->{'file_name'}) {
             my $file = $stash->{job_dir}.$stash->{'file_name'};
             open(my $fh, '<', $file) or die("cannot open $file: $!");
