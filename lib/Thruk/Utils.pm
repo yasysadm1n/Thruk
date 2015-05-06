@@ -640,6 +640,7 @@ append text to current message
 =cut
 sub append_message {
     my($c, $txt) = @_;
+# TODO: check
     if(defined $c->res->cookies->{'thruk_message'}) {
         $c->res->cookies->{'thruk_message'}->{'value'} .= ' '.$txt
     }

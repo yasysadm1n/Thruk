@@ -656,11 +656,10 @@ sub get_message {
     # message from cookie?
     if(defined $c->request->cookie('thruk_message')) {
         my $cookie = $c->request->cookie('thruk_message');
-        $c->res->cookies->{'thruk_message'} = {
-            value   => '',
+        $c->cookie('thruk_message' => '', {
             expires => '-1M',
             path    => $c->stash->{'cookie_path'}
-        };
+        });
         # sometimes the cookie is empty, so delete it in every case
         # and show it if it contains data
         if(defined $cookie and defined $cookie->value) {
@@ -677,6 +676,7 @@ sub get_message {
     # message from stash
     elsif(defined $c->stash->{'thruk_message'}) {
         my($style,$message) = split/~~/mx, $c->stash->{'thruk_message'};
+# TODO: check
         delete $c->res->cookies->{'thruk_message'};
 
         if(defined $c->stash->{'thruk_message_details'}) {

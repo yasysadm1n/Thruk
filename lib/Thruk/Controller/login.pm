@@ -97,12 +97,11 @@ sub index {
 
     if($submit ne '' || $login ne '') {
         my $testcookie = $c->request->cookie('thruk_test');
-        $c->res->cookies->{'thruk_test'} = {
-            value   => '',
+        $c->cookie('thruk_test' => '', {
             expires => '-1M',
             path    => $cookie_path,
             domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
-        };
+        });
         if(   (!defined $testcookie or !$testcookie->value)
            && (!defined $c->{'request'}->{'headers'}->{'user-agent'} or $c->{'request'}->{'headers'}->{'user-agent'} !~ m/wget/mix)) {
             return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi?nocookie");
@@ -114,11 +113,10 @@ sub index {
                 return $c->redirect_to($c->stash->{'url_prefix'}."cgi-bin/login.cgi?problem&".$referer);
             }
             elsif($success) {
-                $c->res->cookies->{'thruk_auth'} = {
-                    value   => $success,
+                $c->cookie('thruk_auth' => $success, {
                     path    => $cookie_path,
                     domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
-                };
+                });
                 # call a script hook after successful login?
                 if($c->config->{'cookie_auth_login_hook'}) {
                     my $cookie_hook = 'REMOTE_USER="'.$login.'" '.$c->config->{'cookie_auth_login_hook'}.' >/dev/null 2>&1 &';
@@ -140,11 +138,10 @@ sub index {
     Thruk::Utils::ssi_include($c, 'login');
 
     # set test cookie
-    $c->res->cookies->{'thruk_test'} = {
-        value   => '****',
+    $c->cookies('thruk_test' => '****', {
         path    => $cookie_path,
         domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
-    };
+    });
 
     $c->stats->profile(end => "login::index");
 
@@ -155,12 +152,11 @@ sub index {
 sub _invalidate_current_session {
     my($c, $cookie_path, $sdir) = @_;
     my $cookie = $c->request->cookie('thruk_auth');
-    $c->res->cookies->{'thruk_auth'} = {
-        value   => '',
+    $c->cookie('thruk_auth' => '', {
         expires => '-1M',
         path    => $cookie_path,
         domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
-    };
+    });
     if(defined $cookie and defined $cookie->value) {
         my $sessionid = $cookie->value;
         if($sessionid =~ m/^\w+$/mx and -f $sdir.'/'.$sessionid) {

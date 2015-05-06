@@ -870,10 +870,7 @@ sub get_backends_with_obj_config {
         if(defined $c->stash->{'backend_detail'}->{$val}) {
             $c->stash->{'param_backend'} = $val;
             # save value in the cookie, so later pages will show the same selected backend
-            $c->res->cookies->{'thruk_conf'} = {
-                value => $val,
-                path  => $c->stash->{'cookie_path'},
-            };
+            $c->cookie('thruk_conf' => $val, { path  => $c->stash->{'cookie_path'} });
         }
     }
 
