@@ -141,6 +141,7 @@ sub startup {
     $r->any('/*/cgi-bin/tac.cgi'          )->to(controller => 'Controller::tac',           action => 'index');
     $r->any('/*/cgi-bin/trends.cgi'       )->to(controller => 'Controller::trends',        action => 'index');
     $r->any('/*/cgi-bin/test.cgi'         )->to(controller => 'Controller::test',          action => 'index');
+    $r->any('/error/:err'                 )->to(controller => 'Controller::error',         action => 'index');
     #&timing_breakpoint('startup() local routes added');
 
     ###################################################

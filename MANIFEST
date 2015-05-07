@@ -1264,7 +1264,6 @@ t/300-controller_config.t
 t/300-controller_cookie_auth.t
 t/300-controller_error.t
 t/300-controller_extinfo.t
-t/300-controller_histogram.t
 t/300-controller_history.t
 t/300-controller_notifications.t
 t/300-controller_outages.t

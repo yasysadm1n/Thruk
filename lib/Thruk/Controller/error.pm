@@ -36,6 +36,9 @@ Catalyst Controller.
 sub index {
     my ( $c, $arg1 ) = @_;
 
+    if(!defined $arg1 && defined $c->stash->{'err'}) {
+        $arg1 = $c->stash->{'err'};
+    }
     if(!defined $c) {
         confess("undefined c in error/index");
     }
