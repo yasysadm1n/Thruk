@@ -59,6 +59,16 @@ sub cookie {
     return($cookie);
 }
 
+=head2 user
+
+return user object for this request
+
+=cut
+sub user {
+    if($_[1]) { $_[0]->{'user'} = $_[1]; }
+    return $Thruk::Request::c->user;
+}
+
 =head2 method
 
 return request method

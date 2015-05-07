@@ -48,8 +48,9 @@ sub set_object_model {
     my $refresh = $c->{'request'}->{'parameters'}->{'refreshdata'} || 0;
 
     $c->stats->profile(begin => "_update_objects_config()");
-    my $model                    = $c->app->obj_db;
-    my $peer_conftool            = $c->{'db'}->get_peer_by_key($c->stash->{'param_backend'});
+    my $model         = $c->app->obj_db;
+    $c->{'obj_db'}    = $model;
+    my $peer_conftool = $c->{'db'}->get_peer_by_key($c->stash->{'param_backend'});
     Thruk::Utils::Conf::get_default_peer_config($peer_conftool->{'configtool'});
     $c->stash->{'peer_conftool'} = $peer_conftool->{'configtool'};
 
