@@ -171,9 +171,9 @@ sub startup {
     $self->helper('user'                        => sub { return($_[0]->{'user'}); });
     $self->helper('authenticate'                => sub { $_[0]->{'user'} = Thruk::Authentication::User->new($_[0]); });
     $self->helper('check_user_roles'            => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles($_[1])) });
+    $self->helper('check_user_roles_wrapper'    => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles($_[1])) });
     $self->helper('check_permissions'           => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_permissions(@_)) });
     $self->helper('check_cmd_permissions'       => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_cmd_permissions(@_)) });
-    $self->helper('check_user_roles_wrapper'    => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles_wrapper(@_)) });
 
     ###################################################
     # add some hooks
@@ -181,6 +181,7 @@ sub startup {
         #my ($next, $c, $action, $last) = @_;
         my ($next, $c) = @_;
         # before
+        Thruk::Request::clear();
         $c->{'errored'} = 0;
         $self->renderer->default_handler('tt');
         $Thruk::Request::c = $c;

@@ -32,7 +32,18 @@ sub new {
         parameters => $Thruk::Request::c->req->params->to_hash,
     };
     bless($self, __PACKAGE__);
+    $instance = $self;
     return($self);
+}
+
+=head2 clear
+
+clear current request object
+
+=cut
+sub clear {
+    our $instance = undef;
+    return;
 }
 
 =head2 cookie
