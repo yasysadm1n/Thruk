@@ -357,8 +357,8 @@ sub test_page {
     }
 
     # test the content type
-    $return->{'content_type'} = $request->header('Content-Type');
-    my $content_type = $request->header('Content-Type');
+    $return->{'content_type'} = $request->header('content-type');
+    my $content_type = $request->header('content-type');
     if(defined $opts->{'content_type'}) {
         is($return->{'content_type'}, $opts->{'content_type'}, 'Content-Type should be: '.$opts->{'content_type'}) or diag($opts->{'url'});
     }
@@ -718,7 +718,7 @@ sub _request {
     if(defined $ENV{'CATALYST_SERVER'}) {
         return(_external_request(@_));
     }
-    $url = 'http://localhost.local'.$url;
+    $url = 'http://localhost.local'.$url unless $url =~ m|^https?:|mx;
 
     my $response;
     if($post) {

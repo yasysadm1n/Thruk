@@ -109,14 +109,10 @@ but if used not via fastcgi/apache, there is no way around
 sub thruk_index {
     my( $c ) = @_;
     # redirect from /thruk to /thruk/
-    if($c->request->path eq 'thruk') {
+    if($c->request->path !~ /\/$/mx) {
         return $c->redirect_to($c->stash->{'url_prefix'});
     }
     return if Thruk::Utils::choose_mobile($c, $c->stash->{'url_prefix'}."cgi-bin/mobile.cgi");
-    # TODO: ??
-    #if( scalar @{ $c->request->args } > 0 and $c->request->args->[0] ne 'index.html' ) {
-    #    return $c->detach("default");
-    #}
 
     if( $c->stash->{'use_frames'} and !$c->stash->{'show_nav_button'} ) {
         return(thruk_index_html($c));

@@ -496,6 +496,7 @@ sub _after_dispatch {
     }
 
     if($c->res->code() == 302) {
+        $c->res->headers->content_type('text/html');
         $c->res->body("This item has moved");
     }
     Thruk::Utils::External::save_profile($c, $ENV{'THRUK_JOB_DIR'}) if $ENV{'THRUK_JOB_DIR'};
