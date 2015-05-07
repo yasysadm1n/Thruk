@@ -48,7 +48,7 @@ sub set_object_model {
     my $refresh = $c->{'request'}->{'parameters'}->{'refreshdata'} || 0;
 
     $c->stats->profile(begin => "_update_objects_config()");
-    my $model                    = $c->model('Objects');
+    my $model                    = $c->app->obj_db;
     my $peer_conftool            = $c->{'db'}->get_peer_by_key($c->stash->{'param_backend'});
     Thruk::Utils::Conf::get_default_peer_config($peer_conftool->{'configtool'});
     $c->stash->{'peer_conftool'} = $peer_conftool->{'configtool'};
@@ -129,7 +129,7 @@ read objects and store them as storable
 sub read_objects {
     my $c             = shift;
     $c->stats->profile(begin => "read_objects()");
-    my $model         = $c->model('Objects');
+    my $model         = $c->app->obj_db;
     my $peer_conftool = $c->{'db'}->get_peer_by_key($c->stash->{'param_backend'});
     my $obj_db        = $model->init($c->stash->{'param_backend'}, $peer_conftool->{'configtool'}, undef, $c->{'stats'}, $peer_conftool);
     store_model_retention($c);
@@ -558,7 +558,7 @@ sub store_model_retention {
     my($c) = @_;
     $c->stats->profile(begin => "store_model_retention()");
 
-    my $model = $c->model('Objects');
+    my $model = $c->app->obj_db;
     my $file  = $c->config->{'tmp_path'}."/obj_retention.dat";
 
     # try to save retention data
@@ -599,7 +599,7 @@ sub get_model_retention {
     my($c) = @_;
     $c->stats->profile(begin => "get_model_retention()");
 
-    my $model = $c->model('Objects');
+    my $model = $c->app->obj_db;
     my $file  = $c->config->{'tmp_path'}."/obj_retention.dat";
 
     if(! -f $file) {

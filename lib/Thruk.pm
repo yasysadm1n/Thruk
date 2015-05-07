@@ -145,7 +145,7 @@ sub startup {
 
     ###################################################
     # create backends
-    $self->app->{'db'} = Thruk::Backend::Manager->new();
+    $self->app->{'db'}     = Thruk::Backend::Manager->new();
     #&timing_breakpoint('startup() backends created');
 
     ###################################################
@@ -174,6 +174,13 @@ sub startup {
     $self->helper('check_user_roles_wrapper'    => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles($_[1])) });
     $self->helper('check_permissions'           => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_permissions(@_)) });
     $self->helper('check_cmd_permissions'       => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_cmd_permissions(@_)) });
+    $self->helper('obj_db' => sub {
+        my($c) = @_;
+        return($c->app->{'obj_db'}) if $c->app->{'obj_db'};
+        require Monitoring::Config::Multi;
+        $c->app->{'obj_db'} = Monitoring::Config::Multi->new();
+        #&timing_breakpoint('startup() obj_db created');
+    });
 
     ###################################################
     # add some hooks

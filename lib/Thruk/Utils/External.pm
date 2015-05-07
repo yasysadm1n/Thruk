@@ -718,8 +718,12 @@ sub _finished_job_page {
 
         # model?
         if(defined $c->stash->{model_type} and defined $c->stash->{model_init}) {
-            my $model  = $c->model($c->stash->{model_type});
-            $model->init(@{$c->stash->{model_init}});
+            if($c->stash->{model_type} eq 'Objects') {
+                my $model = $c->app->obj_db;
+                $model->init(@{$c->stash->{model_init}});
+            } else {
+                confess("model not implemented: ".$c->stash->{model_init});
+            }
         }
 
         if(defined $forward) {

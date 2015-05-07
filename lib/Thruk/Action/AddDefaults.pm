@@ -250,6 +250,16 @@ sub begin {
         }
     }
 
+    # initialize our backends
+    if(!$c->{'db'} ) {
+        $c->{'db'} = $c->app->{'db'};
+        if(defined $c->{'db'}) {
+            $c->{'db'}->init(
+                'backend_debug' => $c->config->{'backend_debug'},
+            );
+        }
+    }
+
     $c->stats->profile(end => "Root begin");
     return 1;
 }
@@ -419,16 +429,6 @@ sub add_defaults {
     $c->stash->{'enable_icinga_features'} = 0;
     if(exists $c->config->{'enable_icinga_features'}) {
         $c->stash->{'enable_icinga_features'} = $c->config->{'enable_icinga_features'};
-    }
-
-    # initialize our backends
-    if(!$c->{'db'} ) {
-        $c->{'db'} = $c->app->{'db'};
-        if(defined $c->{'db'}) {
-            $c->{'db'}->init(
-                'backend_debug' => $c->config->{'backend_debug'},
-            );
-        }
     }
 
     ###############################
