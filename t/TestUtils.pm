@@ -47,7 +47,7 @@ eval {
 
 #########################
 sub request {
-    my($url) = @_;
+    my($url, $data) = @_;
     my $tx;
     my $req;
     if(ref $url eq "") {
@@ -57,8 +57,16 @@ sub request {
         $req    = $url;
         my $url = "".$req->uri();
         $url    =~ s|^\Qhttp://localhost.local\E||gmx;
-# TODO: add post data
-        $tx     = $mojo->ua->build_tx($req->method => $url);
+        if($req->method eq 'GET') {
+            $tx = $mojo->ua->build_tx('GET' => $url);
+        }
+        elsif($req->method eq 'POST') {
+            confess("no data") unless $data;
+            $tx = $mojo->ua->build_tx('POST' => $url,
+                                      'form' => $data,
+            );
+            $tx->req->headers(%{$req->headers});
+        }
     }
     $mojo->tx($mojo->ua->start($tx));
     my $res = HTTP::Response->parse($tx->res->to_string);
@@ -718,7 +726,7 @@ sub _request {
         my $request = POST($url, [%{$post}]);
         $cookie_jar->add_cookie_header($request);
         $request->header("User-Agent" => $agent) if $agent;
-        $response = request($request);
+        $response = request($request, $post);
     } else {
         my $request = HTTP::Request->new(GET => $url);
         $request->header("User-Agent" => $agent) if $agent;

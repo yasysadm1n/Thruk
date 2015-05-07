@@ -58,6 +58,24 @@ sub cookie {
     return($cookie);
 }
 
+=head2 method
+
+return request method
+
+=cut
+sub method {
+    return($Thruk::Request::c->req->method);
+}
+
+=head2 address
+
+return request address
+
+=cut
+sub address {
+    return($Thruk::Request::c->tx->remote_address);
+}
+
 =head2 action
 
 return action of this request uri
