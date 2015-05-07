@@ -700,8 +700,8 @@ sub _finished_job_page {
         $c->res->headers->header( @{$stash->{'res_header'}} ) if defined $stash->{'res_header'};
         $c->res->headers->content_type($stash->{'res_ctype'}) if defined $stash->{'res_ctype'};
         if(defined $stash->{'file_name'}) {
-            confess("no job dir") unless $stash->{job_dir};
-            my $file = $stash->{job_dir}.$stash->{'file_name'};
+            # job dir can be undefined when not doing external forks
+            my $file = ($stash->{job_dir}||'').$stash->{'file_name'};
             open(my $fh, '<', $file) or die("cannot open $file: $!");
             binmode $fh;
             local $/ = undef;

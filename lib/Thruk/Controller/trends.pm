@@ -51,7 +51,7 @@ sub index {
         } else {
             $c->stash->{gd_image} = Thruk::Utils::Trends::_create_image($c, IMAGE_MODE);
         }
-        $c->forward('Thruk::View::GD');
+        return($c->render_gd());
     }
     elsif($trends_helper->_show_step_2($c)) {
         # show step 2

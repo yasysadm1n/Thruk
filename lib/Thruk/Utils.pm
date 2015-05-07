@@ -1271,6 +1271,7 @@ sub savexls {
     $c->stash->{'res_header'} = [ 'Content-Disposition', qq[attachment; filename="] .  $c->stash->{'file_name'} . q["] ];
     $c->stash->{'res_ctype'}  = 'application/x-msexcel';
 
+# TODO: use our renderer
     # Excel::Template::Plus pulls in Moose, so load this later
     require Excel::Template::Plus;
     Excel::Template::Plus->import();
@@ -1283,7 +1284,7 @@ sub savexls {
     $template->param(%{ $c->stash });
     if($c->config->{'no_external_job_forks'}) {
         #my($fh, $filename)...
-        my(undef, $filename) = tempfile();
+        my(undef, $filename)     = tempfile();
         $c->stash->{'file_name'} = $filename;
         $c->stash->{job_dir}     = '';
         $c->stash->{cleanfile}   = 1;

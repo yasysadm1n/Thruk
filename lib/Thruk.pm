@@ -194,7 +194,6 @@ sub startup {
     ###################################################
     # add some hooks
     $self->hook(around_action  => \&_around_action );
-    $self->hook(before_render  => \&_before_render );
     $self->hook(after_dispatch => \&_after_dispatch );
 
     # leads to warnings if we print utf8 to stdout/err otherwise
@@ -441,24 +440,25 @@ sub _around_action {
     _before_prepare_body($c);
     Thruk::Action::AddDefaults::begin($c);
     $c->{'request'} = $c->request;
-    return $next->();
-}
-
-###################################################
-sub _before_render {
-    my($c, $args) = @_;
-    if($c->{errored}) {
-        $c->app->renderer->default_handler('ep');
-        return($c);
-    }
-    if($args->{exception}) {
-        $c->log->error("".$args->{exception});
-        $c->error("".$args->{exception});
-        Thruk::Controller::error::index($c, 13);
+    eval {
+        $next->();
+    };
+    if($@) {
+        if($c->{errored}) {
+            use Data::Dumper; print STDERR Dumper("**** ERROR: page did already try the error page without success");
+            $c->app->renderer->default_handler('ep');
+            return($c);
+        }
+        else {
+            $c->log->error("".$@);
+            $c->error("".$@);
+            Thruk::Controller::error::index($c, 13);
+        }
     }
     Thruk::Action::AddDefaults::end($c);
-    return($c);
+    return;
 }
+
 
 ###################################################
 sub _after_dispatch {

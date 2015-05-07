@@ -207,9 +207,6 @@ our %config = ('name'                   => 'Thruk',
                                     2 => 'UNREACHABLE',
                                 },
               },
-              'View::GD'               => {
-                  gd_image_type      => 'png',
-              },
               'Plugin::Thruk::ConfigLoader' => { file => $project_root.'/thruk.conf' },
               'Plugin::Authentication' => {
                   default_realm => 'Thruk',

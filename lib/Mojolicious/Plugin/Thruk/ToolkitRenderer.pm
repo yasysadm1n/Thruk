@@ -19,7 +19,7 @@ use Template ();
 sub register {
     my($self, $app, $settings) = @_;
 
-    our $template = Template->new($settings->{'config'});
+    $app->{'tt'} = Template->new($settings->{'config'});
     $app->renderer->add_handler( 'tt' => \&render_tt);
 
     $app->helper(
@@ -38,7 +38,7 @@ sub register {
 =cut
 sub render_tt {
     #my($renderer, $controller, $output, $options) = @_;
-    our $template;
+    my $template = $_[1]->app->{'tt'};
     if(!$_[1]->stash->{'_template'}) {
         $_[1]->app->renderer->default_handler('ep');
         confess("no _template set!")

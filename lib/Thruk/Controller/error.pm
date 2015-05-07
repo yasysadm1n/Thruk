@@ -283,6 +283,7 @@ sub index {
 
     # do not download errors
     $c->res->headers->content_disposition('');
+    $c->res->headers->content_type('');
     $c->render_tt();
     return 1;
 }

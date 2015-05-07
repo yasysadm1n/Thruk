@@ -15,19 +15,13 @@ use Carp qw/confess/;
 =cut
 sub register {
     my($self, $app) = @_;
-# TODO: implement
-    #my $encoder = JSON::XS->new
-    #                      ->ascii
-    #                      ->pretty
-    #                      ->allow_blessed
-    #                      ->allow_nonref;
     $app->renderer->add_handler('gd' => sub {
         #my($renderer, $controller, $output, $options) = @_;
-        #if(!$_[3]->{'json'}) {
-        #    $app->renderer->default_handler('ep');
-        #    confess("no json data set!");
-        #}
-        #${$_[2]} = $encoder->encode($_[3]->{'json'});
+        my $gd_image = $_[1]->stash->{gd_image} or die('no gd_image found in stash');
+        ${$_[2]}     = $gd_image->png;
+        $_[1]->res->headers->content_type('image/png');
+        # no automatic encoding
+        delete $_[3]->{encoding};
         return $_[2];
     });
 
@@ -46,8 +40,8 @@ __END__
 =head1 SYNOPSIS
 
     # Mojolicious
-    $self->plugin('GDRenderer', {}, );
-    $self->render_gd(gd => ...);
+    $self->plugin('GDRenderer', {});
+    $self->render_gd();
 
 =head1 DESCRIPTION
 
