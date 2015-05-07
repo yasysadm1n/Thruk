@@ -479,6 +479,7 @@ gets the authorized_for_read_only role and group based roles
 sub get_dynamic_roles {
     my($c, $username, $user) = @_;
 
+# TODO: ...
     $user = Catalyst::Authentication::Store::FromCGIConf->find_user( { username => $username }, $c ) unless defined $user;
 
     # is the contact allowed to send commands?

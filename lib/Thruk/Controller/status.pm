@@ -962,7 +962,7 @@ sub _process_combined_page {
 
     if( $view_mode eq 'xls' ) {
         Thruk::Utils::Status::set_selected_columns($c);
-        $c->res->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
+        $c->res->headers->header( 'Content-Disposition', 'attachment; filename="status.xls"' );
         $c->stash->{'hosts'}     = $hosts;
         $c->stash->{'services'}  = $services;
         $c->stash->{'_template'} = 'excel/status_combined.tt';
@@ -1033,7 +1033,7 @@ sub _process_perfmap_page {
         Thruk::Utils::Status::set_selected_columns($c);
         $c->stash->{'last_col'} = chr(65+(scalar keys %{$keys})-1);
         my $filename = 'performancedata.xls';
-        $c->res->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
+        $c->res->headers->header( 'Content-Disposition', qq[attachment; filename="] . $filename . q["] );
         $c->stash->{'name'}      = 'Performance';
         $c->stash->{'_data'}     = $data;
         $c->stash->{'col_sel'}   = $c->stash->{'columns'};

@@ -21,6 +21,7 @@ requires 'Mojo::IOLoop'                           => 0;     # required by Thruk:
 requires 'JSON::XS'                               => 0;     # required by Thruk::View::JSON
 requires 'Config::General'                        => 0;     # required by Thruk::Utils
 requires 'HTTP::Response'                         => 0;     # required by Thruk::UserAgent
+requires 'LWP::UserAgent'                         => 0;     # required by Thruk::UserAgent
 requires 'Net::HTTP'                              => 6.02;  # required for HTTP connections. Version required due to timeout bug
 requires 'URI::Escape'                            => 0;     # required by Thruk::Controller::Root
 requires 'HTML::Entities'                         => 0;     # required by Thruk::Utils::Filter

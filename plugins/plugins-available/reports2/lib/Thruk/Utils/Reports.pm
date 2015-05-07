@@ -100,7 +100,7 @@ sub report_show {
             my $name = $report->{'var'}->{'attachment'};
             $name    =~ s/\s+/_/gmx;
             $name    =~ s/[^\wöäüÖÄÜß\-_\.]+//gmx;
-            $c->res->header( 'Content-Disposition', 'attachment; filename="'.$name.'"' );
+            $c->res->headers->header( 'Content-Disposition', 'attachment; filename="'.$name.'"' );
             $c->res->headers->content_type($report->{'var'}->{'ctype'}) if $report->{'var'}->{'ctype'};
             open(my $fh, '<', $report_file);
             binmode $fh;
@@ -110,7 +110,7 @@ sub report_show {
             $name    =~ s/\s+/_/gmx;
             $name    =~ s/[^\wöäüÖÄÜß\-_\.]+//gmx;
             $c->res->headers->content_type('application/pdf');
-            $c->res->header( 'Content-Disposition', 'filename='.$name.'.pdf' );
+            $c->res->headers->header( 'Content-Disposition', 'filename='.$name.'.pdf' );
             open(my $fh, '<', $report_file);
             binmode $fh;
             $c->res->body($fh);

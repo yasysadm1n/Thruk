@@ -358,7 +358,7 @@ sub test_page {
 
     # test the content type
     $return->{'content_type'} = $request->header('content-type');
-    my $content_type = $request->header('content-type');
+    my $content_type = $request->header('content-type') || '';
     if(defined $opts->{'content_type'}) {
         is($return->{'content_type'}, $opts->{'content_type'}, 'Content-Type should be: '.$opts->{'content_type'}) or diag($opts->{'url'});
     }

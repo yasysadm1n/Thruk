@@ -31,8 +31,8 @@ sub new {
     my($class, $config) = @_;
     confess("no config") unless $config;
     if(!$config->{'use_curl'}) {
-        require Mojo::UserAgent;
-        my $ua = Mojo::UserAgent->new;
+        require LWP::UserAgent;
+        my $ua = LWP::UserAgent->new;
         return $ua;
     }
     my $self = {
