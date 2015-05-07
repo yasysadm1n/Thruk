@@ -676,9 +676,7 @@ sub get_message {
     # message from stash
     elsif(defined $c->stash->{'thruk_message'}) {
         my($style,$message) = split/~~/mx, $c->stash->{'thruk_message'};
-# TODO: check
-        delete $c->res->cookies->{'thruk_message'};
-
+        shift @{$c->res->every_cookie('thruk_message')};
         if(defined $c->stash->{'thruk_message_details'}) {
             $has_details = 1;
         }

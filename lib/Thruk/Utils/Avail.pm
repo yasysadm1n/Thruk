@@ -671,7 +671,8 @@ sub calculate_availability {
             # store resulting xls in file, forked reports cannot handle detaches
             Thruk::Utils::savexls($c);
         } else {
-            $c->res->headers->header( 'Content-Disposition', 'attachment; filename="'.$c->stash->{'file_name'}.'"' );
+            $c->res->headers->header('Content-Disposition', 'attachment; filename="'.$c->stash->{'file_name'}.'"');
+            delete $c->stash->{'file_name'}; # iritates the finished job page
             return $c->render_excel();
         }
     }

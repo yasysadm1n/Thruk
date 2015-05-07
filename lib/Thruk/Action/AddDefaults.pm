@@ -21,6 +21,7 @@ use Carp;
 use Data::Dumper;
 use JSON::XS qw/encode_json/;
 use Scalar::Util qw/weaken/;
+use POSIX;
 
 ######################################
 
@@ -293,7 +294,7 @@ sub end {
         # save debug info into tmp file
         my $tmp = $c->config->{'tmp_path'}.'/debug';
         Thruk::Utils::IO::mkdir_r($tmp);
-        my $tmpfile = $tmp.'/'.strftime('%Y-%m-%d_%H_%M_%S', localtime).'.log';
+        my $tmpfile = $tmp.'/'.POSIX::strftime('%Y-%m-%d_%H_%M_%S', localtime).'.log';
         open(my $fh, '>', $tmpfile);
         print $fh 'Uri: '.Thruk::Utils::Filter::full_uri($c)."\n";
         print $fh "*************************************\n";
