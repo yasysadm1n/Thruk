@@ -63,7 +63,7 @@ test_tag() {
   # warm up
   ab -c $CONCURRENCY -n 10 "$BASEURL/cgi-bin/tac.cgi" > /dev/null 2>&1
 
-  test_page 'main'   "$BASEURL/main.html"
+  test_page 'main'   "$BASEURL/changes.html"
   test_page 'tac'    "$BASEURL/cgi-bin/tac.cgi"
   test_page 'status' "$BASEURL/cgi-bin/status.cgi"
   mem=$(cat /proc/$pid/status | grep VmRSS:  | awk '{print $2}')
@@ -85,7 +85,7 @@ test -f .author && echo "WARNING: .author mode active";
 
 #################################################
 # run tests
-echo "| Branch        | Startup | Main HTML         | Tactical CGI      | Status CGI        | JSON CGI          | Business P. CGI   | Memory                | LOAD  |";
+echo "| Branch        | Startup | Static HTML       | Tactical CGI      | Status CGI        | JSON CGI          | Business P. CGI   | Memory                | LOAD  |";
 echo "+---------------+---------+-------------------+-------------------+-------------------+-------------------+-------------------+-----------------------+-------+";
 branch=$(git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
 if [ "x$*" = "x" ]; then

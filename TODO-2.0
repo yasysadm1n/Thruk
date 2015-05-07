@@ -1,6 +1,5 @@
  - root -> public
  - $c->user_exists
- - $c->user->get('username') => $c->user()
  - template => _template (http://search.cpan.org/~sri/Mojolicious-6.10/lib/Mojolicious/Controller.pm#stash)
    - write test
    - data => _data

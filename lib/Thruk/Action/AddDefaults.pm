@@ -178,9 +178,9 @@ sub begin {
                 return $c->detach('/error/index/10');
             };
         }
-        $c->log->debug("user authenticated as: ".$c->user());
         if($c->user_exists) {
-            $c->stash->{'remote_user'}= $c->user();
+            $c->log->debug("user authenticated as: ".$c->user->get('username'));
+            $c->stash->{'remote_user'}= $c->user->get('username');
         }
     }
 
@@ -422,9 +422,9 @@ sub add_defaults {
     }
 
     # initialize our backends
-    unless ( defined $c->{'db'} ) {
+    if(!$c->{'db'} ) {
         $c->{'db'} = $c->app->{'db'};
-        if( defined $c->{'db'} ) {
+        if(defined $c->{'db'}) {
             $c->{'db'}->init(
                 'backend_debug' => $c->config->{'backend_debug'},
             );
@@ -433,7 +433,7 @@ sub add_defaults {
 
     ###############################
     # redirect to error page unless we have a connection
-    if(    !defined $c->{'db'}
+    if(    !$c->{'db'}
         or !defined $c->{'db'}->{'backends'}
         or ref $c->{'db'}->{'backends'} ne 'ARRAY'
         or scalar @{$c->{'db'}->{'backends'}} == 0 ) {
@@ -465,7 +465,7 @@ sub add_defaults {
 
     ###############################
     # no backend?
-    return unless defined $c->{'db'};
+    return unless $c->{'db'};
 
     # set check_local_states
     unless(defined $c->config->{'check_local_states'}) {
@@ -831,7 +831,7 @@ sub _disable_backends_by_group {
         if(defined $peer->{'groups'}) {
             for my $group (split/\s*,\s*/mx, $peer->{'groups'}) {
                 if(defined $contactgroups->{$group}) {
-                    $c->log->debug("found contact ".$c->user()." in contactgroup ".$group);
+                    $c->log->debug("found contact ".$c->user->get('username')." in contactgroup ".$group);
                     # delete old completly hidden state
                     delete $disabled_backends->{$peer->{'key'}};
                     # but disabled by cookie?

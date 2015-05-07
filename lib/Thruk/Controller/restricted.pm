@@ -27,7 +27,7 @@ sub index {
     unless ($c->user_exists) {
         return 1 unless ($c->authenticate( {} ));
     }
-    $c->stash->{'_text'} = 'OK: '.$c->user() if $c->user_exists;
+    $c->stash->{'_text'} = 'OK: '.$c->user->get('username') if $c->user_exists;
 
     return 1;
 }

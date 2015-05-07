@@ -165,24 +165,21 @@ sub startup {
         return($self->{'errors'}) unless $_[1];
         push @{$self->{'errors'}}, $_[1];
     });
-    $self->helper('clear_errors' => sub { $self->{'errors'} = []; });
-    $self->helper('db'           => sub { $_[0]->{'db'} });
-    $self->helper('user_exists'  => sub { return(defined $_[0]->{'user'}) });
-    $self->helper('user'         => sub { return($_[0]->{'user'}->{'username'}); });
-    $self->helper('authenticate' => sub {
-       my $user = Thruk::Authentication::User->new;
-       $_[0]->{'user'} = $user->authenticate($_[0]);
-    });
-    # TODO: implement
-    $self->helper('check_user_roles'            => sub { return(1) });
-    $self->helper('check_permissions'           => sub { return(1) });
-    $self->helper('check_cmd_permissions'       => sub { return(1) });
-    $self->helper('check_user_roles_wrapper'    => sub { return(1) });
+    $self->helper('clear_errors'                => sub { $self->{'errors'} = []; });
+    $self->helper('db'                          => sub { $_[0]->{'db'} });
+    $self->helper('user_exists'                 => sub { return(defined $_[0]->{'user'}) });
+    $self->helper('user'                        => sub { return($_[0]->{'user'}); });
+    $self->helper('authenticate'                => sub { $_[0]->{'user'} = Thruk::Authentication::User->new($_[0]); });
+    $self->helper('check_user_roles'            => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles($_[1])) });
+    $self->helper('check_permissions'           => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_permissions(@_)) });
+    $self->helper('check_cmd_permissions'       => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_cmd_permissions(@_)) });
+    $self->helper('check_user_roles_wrapper'    => sub { return(defined $_[0]->{'user'} && $_[0]->{'user'}->check_user_roles_wrapper(@_)) });
 
     ###################################################
     # add some hooks
     $self->hook(around_action => sub {
-        my ($next, $c, $action, $last) = @_;
+        #my ($next, $c, $action, $last) = @_;
+        my ($next, $c) = @_;
         # before
         $c->{'errored'} = 0;
         $self->renderer->default_handler('tt');

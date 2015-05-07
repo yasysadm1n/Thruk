@@ -341,8 +341,8 @@ sub _check_for_commands {
 
         $c->stash->{'backend'} = $c->{'request'}->{'parameters'}->{'backend'} || '';
 
-        my $comment_author = $c->user->username;
-        $comment_author = $c->user->alias if defined $c->user->alias;
+        my $comment_author = $c->user->get('username');
+        $comment_author = $c->user->get('alias') if $c->user->get('alias');
         $c->stash->{comment_author} = $comment_author;
         $c->stash->{cmd_tt}         = 'cmd.tt';
         $c->stash->{_template}      = 'cmd/cmd_typ_' . $cmd_typ . '.tt';
@@ -516,8 +516,8 @@ sub _do_send_command {
 
     # locked author names?
     if( $c->config->{'cgi_cfg'}->{'lock_author_names'} or !defined $c->{'request'}->{'parameters'}->{'com_author'} ) {
-        my $author = $c->user->username;
-        $author = $c->user->alias if defined $c->user->alias;
+        my $author = $c->user->get('username');
+        $author = $c->user->get('alias') if $c->user->get('alias');
         $c->{'request'}->{'parameters'}->{'com_author'} = $author;
     }
 
@@ -703,7 +703,7 @@ sub _bulk_send {
         for my $cmd (@{$commands2send}) {
             my $logstr = sprintf('%s[%s][%s] cmd: %s%s',
                                     ($testmode ? 'TESTMODE: ' : ''),
-                                    $c->user->username,
+                                    $c->user->get('username'),
                                     $backends_string,
                                     $cmd,
                                     ($c->stash->{'extra_log_comment'}->{$cmd} || ''),

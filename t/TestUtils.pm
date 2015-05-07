@@ -57,9 +57,10 @@ sub request {
         $req    = $url;
         my $url = "".$req->uri();
         $url    =~ s|^\Qhttp://localhost.local\E||gmx;
+# TODO: add post data
         $tx     = $mojo->ua->build_tx($req->method => $url);
     }
-    my $test = $mojo->tx($mojo->ua->start($tx));
+    $mojo->tx($mojo->ua->start($tx));
     my $res = HTTP::Response->parse($tx->res->to_string);
     $res->request($req);
     return($res);
@@ -70,11 +71,10 @@ sub ctx_request {
     my($url) = @_;
     require Mojo::Server;
     require HTTP::Response;
-    my $server = Mojo::Server->new();
-    my $app    = $server->build_app('Thruk');
-    my $tx     = $app->build_tx(GET => $url);
-    $app->ua->start($tx);
+    my $tx   = $mojo->ua->build_tx(GET => $url);
+    $mojo->tx($mojo->ua->start($tx));
     my $res  = HTTP::Response->parse($tx->res->to_string);
+    $res->request(HTTP::Request->new(GET => $url));
     my $c    = $Thruk::Request::c;
     $c->tx($tx);
     return($res, $c);

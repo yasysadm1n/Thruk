@@ -230,7 +230,7 @@ sub index {
 
     ###############################
     if($c->user_exists) {
-        $c->stash->{'remote_user'}  = $c->user();
+        $c->stash->{'remote_user'}  = $c->user->get('username');
     } else {
         $c->stash->{'remote_user'}  = '?';
     }

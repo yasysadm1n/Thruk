@@ -54,6 +54,7 @@ lib/Monitoring/Livestatus/INET.pm
 lib/Monitoring/Livestatus/UNIX.pm
 lib/Thruk.pm
 lib/Thruk/Action/AddDefaults.pm
+lib/Thruk/Authentication/User.pm
 lib/Thruk/Backend/Manager.pm
 lib/Thruk/Backend/Peer.pm
 lib/Thruk/Backend/Pool.pm
