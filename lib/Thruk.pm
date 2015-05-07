@@ -93,12 +93,23 @@ sub startup {
     $self->app->config($config);
     #&timing_breakpoint('startup() config loaded');
 
+    ###################################################
+    # load and parse cgi.cfg into $c->config
+    unless(Thruk::Utils::read_cgi_cfg(undef, $config)) {
+        die("\n\n*****\nfailed to load cgi config: ".$config->{'cgi.cfg'}."\n*****\n\n");
+    }
+    #&timing_breakpoint('startup() cgi.cfg parsed');
+
+    $self->_create_secret_file();
+    $self->_set_timezone();
+    $self->_set_ssi();
+    $self->_setup_pidfile();
+
     # setup renderer
     $self->plugin('Thruk::ToolkitRenderer', {config => $config->{'View::TT'}});
     $self->plugin('Thruk::JSONRenderer', {});
     $self->plugin('Thruk::ExcelRenderer', {config => $config->{'View::Excel::Template::Plus'}});
     $self->plugin('Thruk::GDRenderer', {});
-    $self->renderer->default_handler('tt');
 
     _init_logging($self, $config);
     _init_cache($config);
@@ -145,7 +156,7 @@ sub startup {
 
     ###################################################
     # create backends
-    $self->app->{'db'}     = Thruk::Backend::Manager->new();
+    $self->app->{'db'} = Thruk::Backend::Manager->new();
     #&timing_breakpoint('startup() backends created');
 
     ###################################################
@@ -161,7 +172,6 @@ sub startup {
         confess("detach: ".$_[1]." at ".$_[0]->req->url->path);
     });
     $self->helper('error'   => sub {
-        #my($c, $err) = @_;
         return($self->{'errors'}) unless $_[1];
         push @{$self->{'errors'}}, $_[1];
     });
@@ -179,39 +189,17 @@ sub startup {
         return($c->app->{'obj_db'}) if $c->app->{'obj_db'};
         require Monitoring::Config::Multi;
         $c->app->{'obj_db'} = Monitoring::Config::Multi->new();
-        #&timing_breakpoint('startup() obj_db created');
     });
 
     ###################################################
     # add some hooks
-    $self->hook(around_action => sub {
-        #my ($next, $c, $action, $last) = @_;
-        my ($next, $c) = @_;
-        # before
-        Thruk::Request::clear();
-        $c->{'errored'} = 0;
-        $self->renderer->default_handler('tt');
-        $Thruk::Request::c = $c;
-        _before_prepare_body($c);
-        Thruk::Action::AddDefaults::begin($c);
-        $c->{'request'} = $c->request;
-        return $next->();
-    });
-    $self->hook(before_render => sub {
-        my($c, $args) = @_;
-        if($c->{errored}) {
-            $self->renderer->default_handler('ep');
-            return($c);
-        }
-        if($args->{exception}) {
-            $c->log->error("".$args->{exception});
-            $c->error("".$args->{exception});
-            Thruk::Controller::error::index($c, 13);
-        }
-        Thruk::Action::AddDefaults::end($c);
-        return($c);
-    });
-    $self->hook(after_dispatch => \&_after_finalize );
+    $self->hook(around_action  => \&_around_action );
+    $self->hook(before_render  => \&_before_render );
+    $self->hook(after_dispatch => \&_after_dispatch );
+
+    # leads to warnings if we print utf8 to stdout/err otherwise
+    binmode(STDOUT, ":encoding(UTF-8)");
+    binmode(STDERR, ":encoding(UTF-8)");
 
     #&timing_breakpoint('start done');
     return;
@@ -253,110 +241,116 @@ sub _init_cache {
 
 ###################################################
 # save pid
-# TODO: ...
-#my $pidfile  = __PACKAGE__->config->{'tmp_path'}.'/thruk.pid';
-#sub _remove_pid {
-#    $SIG{PIPE} = 'IGNORE';
-#    if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'FastCGI') {
-#        if($pidfile && -f $pidfile) {
-#            my $pids = [split(/\s/mx, read_file($pidfile))];
-#            my $remaining = [];
-#            for my $pid (@{$pids}) {
-#                next unless($pid and $pid =~ m/^\d+$/mx);
-#                next if $pid == $$;
-#                next if kill(0, $pid) == 0;
-#                push @{$remaining}, $pid;
-#            }
-#            if(scalar @{$remaining} == 0) {
-#                unlink($pidfile);
-#                if(__PACKAGE__->config->{'use_shadow_naemon'} and __PACKAGE__->config->{'use_shadow_naemon'} ne 'start_only') {
-#                    Thruk::Utils::Livecache::shutdown_shadow_naemon_procs(__PACKAGE__->config);
-#                }
-#            } else {
-#                open(my $fh, '>', $pidfile);
-#                print $fh join("\n", @{$remaining}),"\n";
-#                CORE::close($fh);
-#            }
-#        }
-#    }
-#    if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'DebugServer') {
-#        # debug server has no pid file, so just kill our shadows
-#        if(__PACKAGE__->config->{'use_shadow_naemon'} and __PACKAGE__->config->{'use_shadow_naemon'} ne 'start_only') {
-#            Thruk::Utils::Livecache::shutdown_shadow_naemon_procs(__PACKAGE__->config);
-#        }
-#    }
-#    return;
-#}
-#if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'FastCGI') {
-#    -s $pidfile || unlink(__PACKAGE__->config->{'tmp_path'}.'/thruk.cache');
-#    open(my $fh, '>>', $pidfile) || warn("cannot write $pidfile: $!");
-#    print $fh $$."\n";
-#    Thruk::Utils::IO::close($fh, $pidfile);
-#}
-#$SIG{INT}  = sub { _remove_pid(); exit; };
-#$SIG{TERM} = sub { _remove_pid(); exit; };
-#END {
-#    _remove_pid();
-#};
+my $pidfile;
+sub _setup_pidfile {
+    my($self) = @_;
+    $pidfile  = $self->config->{'tmp_path'}.'/thruk.pid';
+    if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'FastCGI') {
+        -s $pidfile || unlink($self->config->{'tmp_path'}.'/thruk.cache');
+        open(my $fh, '>>', $pidfile) || warn("cannot write $pidfile: $!");
+        print $fh $$."\n";
+        Thruk::Utils::IO::close($fh, $pidfile);
+    }
+    return;
+}
+sub _remove_pid {
+    return unless $pidfile;
+    $SIG{PIPE} = 'IGNORE';
+    if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'FastCGI') {
+        if($pidfile && -f $pidfile) {
+            my $pids = [split(/\s/mx, read_file($pidfile))];
+            my $remaining = [];
+            for my $pid (@{$pids}) {
+                next unless($pid and $pid =~ m/^\d+$/mx);
+                next if $pid == $$;
+                next if kill(0, $pid) == 0;
+                push @{$remaining}, $pid;
+            }
+            if(scalar @{$remaining} == 0) {
+                unlink($pidfile);
+                if(__PACKAGE__->config->{'use_shadow_naemon'} and __PACKAGE__->config->{'use_shadow_naemon'} ne 'start_only') {
+                    Thruk::Utils::Livecache::shutdown_shadow_naemon_procs(__PACKAGE__->config);
+                }
+            } else {
+                open(my $fh, '>', $pidfile);
+                print $fh join("\n", @{$remaining}),"\n";
+                CORE::close($fh);
+            }
+        }
+    }
+    if(defined $ENV{'THRUK_SRC'} and $ENV{'THRUK_SRC'} eq 'DebugServer') {
+        # debug server has no pid file, so just kill our shadows
+        if(__PACKAGE__->config->{'use_shadow_naemon'} and __PACKAGE__->config->{'use_shadow_naemon'} ne 'start_only') {
+            Thruk::Utils::Livecache::shutdown_shadow_naemon_procs(__PACKAGE__->config);
+        }
+    }
+    return;
+}
+$SIG{INT}  = sub { _remove_pid(); exit; };
+$SIG{TERM} = sub { _remove_pid(); exit; };
+END {
+    _remove_pid();
+};
 
 ###################################################
 # create secret file
-# TODO: ...
-#if(!defined $ENV{'THRUK_SRC'} or $ENV{'THRUK_SRC'} ne 'SCRIPTS') {
-#    my $var_path   = __PACKAGE__->config->{'var_path'} or die("no var path!");
-#    my $secretfile = $var_path.'/secret.key';
-#    unless(-s $secretfile) {
-#        my $digest = md5_hex(rand(1000).time());
-#        chomp($digest);
-#        open(my $fh, ">$secretfile") or warn("cannot write to $secretfile: $!");
-#        if(defined $fh) {
-#            print $fh $digest;
-#            Thruk::Utils::IO::close($fh, $secretfile);
-#            chmod(0640, $secretfile);
-#        }
-#        __PACKAGE__->config->{'secret_key'} = $digest;
-#    } else {
-#        my $secret_key = read_file($secretfile);
-#        chomp($secret_key);
-#        __PACKAGE__->config->{'secret_key'} = $secret_key;
-#    }
-#}
+sub _create_secret_file {
+    my($self) = @_;
+    if(!defined $ENV{'THRUK_SRC'} or $ENV{'THRUK_SRC'} ne 'SCRIPTS') {
+        my $var_path   = $self->config->{'var_path'} or die("no var path!");
+        my $secretfile = $var_path.'/secret.key';
+        unless(-s $secretfile) {
+            my $digest = md5_hex(rand(1000).time());
+            chomp($digest);
+            open(my $fh, ">$secretfile") or warn("cannot write to $secretfile: $!");
+            if(defined $fh) {
+                print $fh $digest;
+                Thruk::Utils::IO::close($fh, $secretfile);
+                chmod(0640, $secretfile);
+            }
+            $self->config->{'secret_key'} = $digest;
+        } else {
+            my $secret_key = read_file($secretfile);
+            chomp($secret_key);
+            $self->config->{'secret_key'} = $secret_key;
+        }
+    }
+    return;
+}
 
 ###################################################
 # set timezone
-# TODO: ...
-#my $timezone = __PACKAGE__->config->{'use_timezone'};
-#if(defined $timezone) {
-#    $ENV{'TZ'} = $timezone;
-#    POSIX::tzset();
-#}
+sub _set_timezone {
+    my($self) = @_;
+    my $timezone = $self->config->{'use_timezone'};
+    if(defined $timezone) {
+        $ENV{'TZ'} = $timezone;
+        POSIX::tzset();
+    }
+    return;
+}
 
 ###################################################
 # set installed server side includes
-# TODO: ...
-#my $ssi_dir = __PACKAGE__->config->{'ssi_path'};
-#my (%ssi, $dh);
-#if(!-e $ssi_dir) {
-#    warn("cannot access ssi_path $ssi_dir: $!");
-#} else {
-#    opendir( $dh, $ssi_dir) or die "can't opendir '$ssi_dir': $!";
-#    for my $entry (readdir($dh)) {
-#        next if $entry eq '.' or $entry eq '..';
-#        next if $entry !~ /\.ssi$/mx;
-#        $ssi{$entry} = { name => $entry }
-#    }
-#    closedir $dh;
-#}
-#__PACKAGE__->config->{'ssi_includes'} = \%ssi;
-#__PACKAGE__->config->{'ssi_path'}     = $ssi_dir;
-
-###################################################
-# load and parse cgi.cfg into $c->config
-# TODO: ...
-#unless(Thruk::Utils::read_cgi_cfg(undef, __PACKAGE__->config)) {
-#    die("\n\n*****\nfailed to load cgi config: ".__PACKAGE__->config->{'cgi.cfg'}."\n*****\n\n");
-#}
-
+sub _set_ssi {
+    my($self) = @_;
+    my $ssi_dir = $self->config->{'ssi_path'};
+    my (%ssi, $dh);
+    if(!-e $ssi_dir) {
+        warn("cannot access ssi_path $ssi_dir: $!");
+    } else {
+        opendir( $dh, $ssi_dir) or die "can't opendir '$ssi_dir': $!";
+        for my $entry (readdir($dh)) {
+            next if $entry eq '.' or $entry eq '..';
+            next if $entry !~ /\.ssi$/mx;
+            $ssi{$entry} = { name => $entry }
+        }
+        closedir $dh;
+    }
+    $self->config->{'ssi_includes'} = \%ssi;
+    $self->config->{'ssi_path'}     = $ssi_dir;
+    return;
+}
 
 ###################################################
 # Logging
@@ -422,14 +416,6 @@ if($ENV{'MALLINFO'}) {
     }
 }
 
-#sub prepare_path {
-#   TODO: ...
-#    # collect statistics when running external command or if enabled by env variable
-#    if($ENV{'THRUK_JOB_DIR'} || ($ENV{'THRUK_PERFORMANCE_DEBUG'} && $ENV{'THRUK_PERFORMANCE_DEBUG'} >= 2)) {
-#        $c->stats->enable(1);
-#    }
-#}
-
 ###################################################
 
 =head2 run_after_request
@@ -444,9 +430,39 @@ sub run_after_request {
     return;
 }
 
-sub _after_finalize {
+###################################################
+sub _around_action {
+    #my ($next, $c, $action, $last) = @_;
+    my ($next, $c) = @_;
+    Thruk::Request::clear();
+    $c->{'errored'} = 0;
+    $c->app->renderer->default_handler('tt');
+    $Thruk::Request::c = $c;
+    _before_prepare_body($c);
+    Thruk::Action::AddDefaults::begin($c);
+    $c->{'request'} = $c->request;
+    return $next->();
+}
+
+###################################################
+sub _before_render {
+    my($c, $args) = @_;
+    if($c->{errored}) {
+        $c->app->renderer->default_handler('ep');
+        return($c);
+    }
+    if($args->{exception}) {
+        $c->log->error("".$args->{exception});
+        $c->error("".$args->{exception});
+        Thruk::Controller::error::index($c, 13);
+    }
+    Thruk::Action::AddDefaults::end($c);
+    return($c);
+}
+
+###################################################
+sub _after_dispatch {
     my($c) = @_;
-    $c->stats->profile(end => "finalize");
     $c->stats->profile(begin => "after finalize");
 
     while(my $sub = shift @{$c->stash->{'run_after_request_cb'}}) {
@@ -485,30 +501,15 @@ sub _after_finalize {
 };
 
 ###################################################
-
-=head2 use_stats
-
-switch for various internal catalyst sub wether to gather statistics or not
-
-=cut
-#sub use_stats {
-#    my($c) = @_;
-#    # save previous error, otherwise we would
-#    # overwrite real error which has not yet been thrown
-#    my $error = $@;
-#    eval { # newer Catalyst::Middleware::Stash versions die if called to early
-#        if($c->stash->{'no_more_profile'})  { return; }
-#    };
-#    # restore original error
-#    $@ = $error;
-#    if($ENV{'THRUK_PERFORMANCE_DEBUG'} and $ENV{'THRUK_PERFORMANCE_DEBUG'} > 1) { return(1); }
-#    return;
-#}
-
-###################################################
 # add some more profiles
 sub _before_prepare_body {
     my($c) = @_;
+
+    # collect statistics when running external command or if enabled by env variable
+    if($ENV{'THRUK_JOB_DIR'} || ($ENV{'THRUK_PERFORMANCE_DEBUG'} && $ENV{'THRUK_PERFORMANCE_DEBUG'} >= 2)) {
+        $c->stats->enable(1);
+    }
+
     if($ENV{'THRUK_PERFORMANCE_DEBUG'}) {
         $c->stash->{'memory_begin'} = Thruk::Backend::Pool::get_memory_usage();
         $c->stash->{'time_begin'}   = [gettimeofday()];
