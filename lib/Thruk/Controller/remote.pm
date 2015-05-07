@@ -39,7 +39,7 @@ sub index {
     }
     $c->stash->{'_template'} = 'passthrough.tt';
 
-    my $action = $c->{'request'}->query_keywords() || '';
+    my $action = $c->{'request'}->query || '';
 
     # startup request?
     if($action eq 'startup') {

@@ -16,6 +16,7 @@ requires 'parent'                                 => 0;     # required by Thruk
 requires 'Module::Load'                           => 0;     # required by Thruk
 requires 'Mojolicious'                            => 0;     # required by Thruk
 requires 'Mojo::Base'                             => 0;     # required by Thruk
+requires 'Mojo::Util'                             => 0;     # required by Thruk::Request
 requires 'Mojo::IOLoop'                           => 0;     # required by Thruk::Utils::External
 requires 'JSON::XS'                               => 0;     # required by Thruk::View::JSON
 requires 'Config::General'                        => 0;     # required by Thruk::Utils
@@ -74,6 +75,7 @@ feature     ('mysql_support',
 );
 
 # fastcgi_server support
+# TODO: ??
 feature     ('fastcgi_server',
   -default                                        => 0,
   'FCGI::ProcManager'                             => 0,     # required by fastcgi_server

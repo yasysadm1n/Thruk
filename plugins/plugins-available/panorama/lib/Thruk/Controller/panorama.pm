@@ -99,8 +99,8 @@ sub index {
     $c->{'panorama_var'} = $c->config->{'var_path'}.'/panorama';
     Thruk::Utils::IO::mkdir_r($c->{'panorama_var'});
 
-    if(defined $c->request->query_keywords) {
-        if($c->request->query_keywords eq 'state') {
+    if(defined $c->request->query) {
+        if($c->request->query eq 'state') {
             return(_stateprovider($c));
         }
     }

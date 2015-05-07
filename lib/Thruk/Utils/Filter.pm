@@ -657,7 +657,7 @@ sub get_message {
     if(defined $c->request->cookie('thruk_message')) {
         my $cookie = $c->request->cookie('thruk_message');
         $c->cookie('thruk_message' => '', {
-            expires => '-1M',
+            expires => 0,
             path    => $c->stash->{'cookie_path'}
         });
         # sometimes the cookie is empty, so delete it in every case

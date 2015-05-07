@@ -3,6 +3,7 @@ package Thruk::Request;
 use warnings;
 use strict;
 use Thruk::Request::Cookie;
+use Mojo::Util qw(url_unescape);
 
 =head1 NAME
 
@@ -113,16 +114,13 @@ sub parameters {
     return($self->{'parameters'});
 }
 
-=head2 query_keywords
+=head2 query
 
-return request query_keywords
+return request query
 
 =cut
-sub query_keywords {
-    # TODO: deprecate
-    require URI;
-    my $uri = URI->new($Thruk::Request::c->req->url);
-    return($uri->query_keywords);
+sub query {
+    return(url_unescape($Thruk::Request::c->req->url->query->to_string));
 }
 
 1;

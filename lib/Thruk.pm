@@ -175,6 +175,7 @@ sub startup {
         return($self->{'errors'}) unless $_[1];
         push @{$self->{'errors'}}, $_[1];
     });
+    $self->helper('run_after_request'           => \&run_after_request);
     $self->helper('clear_errors'                => sub { $self->{'errors'} = []; });
     $self->helper('db'                          => sub { $_[0]->{'db'} });
     $self->helper('user_exists'                 => sub { return(defined $_[0]->{'user'}) });

@@ -38,13 +38,13 @@ sub index {
     my $sdir        = $c->config->{'var_path'}.'/sessions';
     Thruk::Utils::IO::mkdir($sdir);
 
-    my $keywords = $c->req->query_keywords;
+    my $keywords = $c->request->query;
     my $logoutref;
     if($keywords and $keywords =~ m/^logout(\/.*)/mx) {
         $keywords = 'logout';
         $logoutref = $1;
     }
-    if($c->req->uri =~ m/\/\Q$product_prefix\E\/cgi\-bin\/login\.cgi\?logout(\/.*)/mx) {
+    if($c->request->uri =~ m/\/\Q$product_prefix\E\/cgi\-bin\/login\.cgi\?logout(\/.*)/mx) {
         $keywords = 'logout';
         $logoutref = $1;
     }
@@ -98,7 +98,7 @@ sub index {
     if($submit ne '' || $login ne '') {
         my $testcookie = $c->request->cookie('thruk_test');
         $c->cookie('thruk_test' => '', {
-            expires => '-1M',
+            expires => 0,
             path    => $cookie_path,
             domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
         });
@@ -138,7 +138,7 @@ sub index {
     Thruk::Utils::ssi_include($c, 'login');
 
     # set test cookie
-    $c->cookies('thruk_test' => '****', {
+    $c->cookie('thruk_test' => '****', {
         path    => $cookie_path,
         domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
     });
@@ -153,7 +153,7 @@ sub _invalidate_current_session {
     my($c, $cookie_path, $sdir) = @_;
     my $cookie = $c->request->cookie('thruk_auth');
     $c->cookie('thruk_auth' => '', {
-        expires => '-1M',
+        expires => 0,
         path    => $cookie_path,
         domain  => ($c->config->{'cookie_auth_domain'} ? $c->config->{'cookie_auth_domain'} : ''),
     });
