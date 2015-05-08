@@ -41,7 +41,7 @@ sub render_tt {
     my $template = $_[1]->app->{'tt'};
     if(!$_[1]->stash->{'_template'}) {
         $_[1]->app->renderer->default_handler('ep');
-        confess("no _template set!")
+        confess("no _template set!");
     }
 
     if($_[1]->stash->{'additional_template_paths'}) {

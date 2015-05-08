@@ -105,6 +105,7 @@ sub report_show {
             open(my $fh, '<', $report_file);
             binmode $fh;
             $c->res->body($fh);
+            return($c->rendered(200));
         } else {
             my $name = $report->{'name'};
             $name    =~ s/\s+/_/gmx;
@@ -114,6 +115,7 @@ sub report_show {
             open(my $fh, '<', $report_file);
             binmode $fh;
             $c->res->body($fh);
+            return($c->rendered(200));
         }
     } else {
         if($Thruk::Utils::Reports::error) {

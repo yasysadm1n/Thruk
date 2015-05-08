@@ -163,6 +163,12 @@ sub perl {
             _clean_unstorable_refs($c->stash);
             store(\%{$c->stash}, $dir."/stash");
 
+            if($c->config->{'thruk_debug'}) {
+                open(my $fh, '>', $dir."/stash.dump");
+                print $fh Dumper($c->stash);
+                CORE::close($fh);
+            }
+
             $c->stats->profile(end => 'External::perl');
             save_profile($c, $dir);
         };
@@ -707,7 +713,7 @@ sub _finished_job_page {
             $c->res->body(<$fh>);
             Thruk::Utils::IO::close($fh, $file);
             unlink($file) if defined $c->stash->{cleanfile};
-            return;
+            return($c->rendered(200));
         }
         # merge stash
             for my $key (keys %{$stash}) {
