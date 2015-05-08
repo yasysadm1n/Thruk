@@ -103,8 +103,7 @@ run perl expression in an external process
 
 =cut
 sub perl {
-    my $c         = shift;
-    my $conf      = shift;
+    my($c, $conf) = @_;
 
     if(   $c->config->{'no_external_job_forks'}
        or $conf->{'nofork'}
@@ -161,7 +160,7 @@ sub perl {
             };
 
             # save stash
-            _clean_code_refs($c->stash);
+            _clean_unstorable_refs($c->stash);
             store(\%{$c->stash}, $dir."/stash");
 
             $c->stats->profile(end => 'External::perl');
@@ -535,8 +534,8 @@ sub _do_child_stuff {
 
     # cleanup running loops
     # TODO: check
-    $c->ioloop->reset;
-    delete $c->{ioloop}; # not sure this is needed
+    #$c->ioloop->reset;
+    #delete $c->{ioloop}; # not sure this is needed
     Mojo::IOLoop->reset;
 
     POSIX::setsid() or die "Can't start a new session: $!";
@@ -746,10 +745,13 @@ use Carp; confess("where does this json come from...") if defined $c->stash->{js
 }
 
 ##############################################
-sub _clean_code_refs {
-    my $var = shift;
+sub _clean_unstorable_refs {
+    my($var) = @_;
     for my $key (keys %{$var}) {
-        delete $var->{$key} if ref $var->{$key} eq 'CODE';
+        my $ref = ref $var->{$key};
+        if($ref ne '' && $ref ne 'HASH' && $ref ne 'ARRAY') {
+            delete $var->{$key}
+        }
     }
     return $var;
 }
